@@ -1,0 +1,711 @@
+{
+ "params": {
+  "ROD_DZ": 40.0,
+  "ROD_DX": 0.0,
+  "LEFT_A_LEVEL": "upper",
+  "Y_RAIL_SPACING": 440.0,
+  "FRAME_Y_INNER": 440.0,
+  "Y_RAIL_LEN": 400.0,
+  "LEVEL_HALF_GAP": 7.25,
+  "IDLER_A": [
+   21.0,
+   -7.0
+  ],
+  "IDLER_B": [
+   34.0,
+   7.0
+  ],
+  "IDLER_PITCH_R": 6.37,
+  "POCKET_D": 20.5,
+  "POCKET_H": 8.0,
+  "BELT_W": 6.0,
+  "BELT_T": 1.38,
+  "MGN12H_W": 27.0,
+  "MGN12H_L": 45.4,
+  "MGN12_H": 13.0,
+  "MGN12_H1": 3.0,
+  "MGN12_RAIL_W": 12.0,
+  "MGN12_RAIL_H": 8.0,
+  "MGN12H_B": 20.0,
+  "MGN12H_C": 20.0,
+  "MGN9H_W": 20.0,
+  "MGN9H_L": 39.9,
+  "MGN9_H": 10.0,
+  "MGN9_H1": 2.0,
+  "MGN9_RAIL_W": 9.0,
+  "MGN9_RAIL_H": 6.5,
+  "MGN9H_B": 15.0,
+  "MGN9H_C": 16.0,
+  "BEAM_Y": 13.0,
+  "BEAM_TOP": 22.0,
+  "BEAM_END_X": 19.5,
+  "X_RAIL_LEN": 350.0,
+  "CARRIER_HALF_W": 27.0,
+  "CLAMP_LEN": 16.0
+ },
+ "carrier_x_range": [
+  77.35628604888916,
+  370.08467197418213
+ ],
+ "gantry_y_range": [
+  44.60352897644043,
+  397.2999858856201
+ ],
+ "x_travel": 292.72838592529297,
+ "y_travel": 352.6964569091797,
+ "nozzle_z": -9.349999999999994,
+ "nozzle_xy_offset_from_carriage": [
+  0.0,
+  -36.15
+ ],
+ "probe_offset_from_nozzle": [
+  -23.87,
+  -1.6000000000000014
+ ],
+ "poses": [
+  {
+   "X": 77.85628604888916,
+   "Y": 45.10352897644043,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.04005609900558227
+  },
+  {
+   "X": 77.85628604888916,
+   "Y": 133.02764320373535,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.05245789673811885
+  },
+  {
+   "X": 77.85628604888916,
+   "Y": 220.95175743103027,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.07598258407431047
+  },
+  {
+   "X": 77.85628604888916,
+   "Y": 308.8758716583252,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.1377561549691677
+  },
+  {
+   "X": 77.85628604888916,
+   "Y": 396.7999858856201,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.7344605348413893
+  },
+  {
+   "X": 150.7883825302124,
+   "Y": 45.10352897644043,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.04005609900558227
+  },
+  {
+   "X": 150.7883825302124,
+   "Y": 133.02764320373535,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.05245789673811885
+  },
+  {
+   "X": 150.7883825302124,
+   "Y": 220.95175743103027,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.07598258407431047
+  },
+  {
+   "X": 150.7883825302124,
+   "Y": 308.8758716583252,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.1377561549691677
+  },
+  {
+   "X": 150.7883825302124,
+   "Y": 396.7999858856201,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.7344605348413893
+  },
+  {
+   "X": 223.72047901153564,
+   "Y": 45.10352897644043,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.04005609900558227
+  },
+  {
+   "X": 223.72047901153564,
+   "Y": 133.02764320373535,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.05245789673811885
+  },
+  {
+   "X": 223.72047901153564,
+   "Y": 220.95175743103027,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.07598258407431047
+  },
+  {
+   "X": 223.72047901153564,
+   "Y": 308.8758716583252,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.1377561549691677
+  },
+  {
+   "X": 223.72047901153564,
+   "Y": 396.7999858856201,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.7344605348413893
+  },
+  {
+   "X": 296.6525754928589,
+   "Y": 45.10352897644043,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.04005609900558227
+  },
+  {
+   "X": 296.6525754928589,
+   "Y": 133.02764320373535,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.05245789673811885
+  },
+  {
+   "X": 296.6525754928589,
+   "Y": 220.95175743103027,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.07598258407431047
+  },
+  {
+   "X": 296.6525754928589,
+   "Y": 308.8758716583252,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.1377561549691677
+  },
+  {
+   "X": 296.6525754928589,
+   "Y": 396.7999858856201,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.7344605348413893
+  },
+  {
+   "X": 369.58467197418213,
+   "Y": 45.10352897644043,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.04005609900558227
+  },
+  {
+   "X": 369.58467197418213,
+   "Y": 133.02764320373535,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.05245789673811885
+  },
+  {
+   "X": 369.58467197418213,
+   "Y": 220.95175743103027,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.07598258407431047
+  },
+  {
+   "X": 369.58467197418213,
+   "Y": 308.8758716583252,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.1377561549691677
+  },
+  {
+   "X": 369.58467197418213,
+   "Y": 396.7999858856201,
+   "part_collisions": [],
+   "belt_hits": [],
+   "clamp_fit": [
+    [
+     "left-upper",
+     0.0
+    ],
+    [
+     "left-lower",
+     0.0
+    ],
+    [
+     "right-upper",
+     0.0
+    ],
+    [
+     "right-lower",
+     0.0
+    ]
+   ],
+   "max_strand_angle_deg": 0.7344605348413893
+  }
+ ],
+ "belt_length_variation_mm": {
+  "belt1 (left-A level)": 0.001577812454343075,
+  "belt2 (left-B level)": 0.001577812454343075
+ },
+ "belt_length_mm": {
+  "belt1 (left-A level)": 1591.0363083263483,
+  "belt2 (left-B level)": 1591.0363083263483
+ },
+ "all_clear": true,
+ "corexy_kinematics_per_10mm": {
+  "belt1 (left-A level)": {
+   "dL_per_dX": 10.0,
+   "dL_per_dY": 10.0
+  },
+  "belt2 (left-B level)": {
+   "dL_per_dX": -10.0,
+   "dL_per_dY": 10.0
+  }
+ }
+}

@@ -1,0 +1,165 @@
+{
+ "xy_joiner_left": {
+  "volume_cm3": 64.8,
+  "watertight": true,
+  "genus": 16,
+  "extents_installed": [
+   55.5,
+   50.7,
+   52.2
+  ],
+  "extents_print": [
+   52.2,
+   50.7,
+   55.5
+  ]
+ },
+ "xy_joiner_right": {
+  "volume_cm3": 65.7,
+  "watertight": true,
+  "genus": 17,
+  "extents_installed": [
+   55.5,
+   50.7,
+   52.2
+  ],
+  "extents_print": [
+   52.2,
+   50.7,
+   55.5
+  ]
+ },
+ "hotend_carrier_mgn9h": {
+  "volume_cm3": 50.3,
+  "watertight": true,
+  "genus": 10,
+  "extents_installed": [
+   62.4,
+   59.7,
+   52.4
+  ],
+  "extents_print": [
+   62.4,
+   52.4,
+   59.7
+  ]
+ },
+ "params": {
+  "ROD_DZ": 40.0,
+  "ROD_DX": 0.0,
+  "LEFT_A_LEVEL": "upper",
+  "Y_RAIL_SPACING": 440.0,
+  "FRAME_Y_INNER": 440.0,
+  "Y_RAIL_LEN": 400.0,
+  "LEVEL_HALF_GAP": 7.25,
+  "IDLER_A": [
+   21.0,
+   -7.0
+  ],
+  "IDLER_B": [
+   34.0,
+   7.0
+  ],
+  "IDLER_PITCH_R": 6.37,
+  "POCKET_D": 20.5,
+  "POCKET_H": 8.0,
+  "BELT_W": 6.0,
+  "BELT_T": 1.38,
+  "MGN12H_W": 27.0,
+  "MGN12H_L": 45.4,
+  "MGN12_H": 13.0,
+  "MGN12_H1": 3.0,
+  "MGN12_RAIL_W": 12.0,
+  "MGN12_RAIL_H": 8.0,
+  "MGN12H_B": 20.0,
+  "MGN12H_C": 20.0,
+  "MGN9H_W": 20.0,
+  "MGN9H_L": 39.9,
+  "MGN9_H": 10.0,
+  "MGN9_H1": 2.0,
+  "MGN9_RAIL_W": 9.0,
+  "MGN9_RAIL_H": 6.5,
+  "MGN9H_B": 15.0,
+  "MGN9H_C": 16.0,
+  "BEAM_Y": 13.0,
+  "BEAM_TOP": 22.0,
+  "BEAM_END_X": 19.5,
+  "X_RAIL_LEN": 350.0,
+  "CARRIER_HALF_W": 27.0,
+  "CLAMP_LEN": 16.0
+ },
+ "belt_levels": {
+  "lower": 32.75,
+  "upper": 47.25
+ },
+ "left_idlers": [
+  {
+   "name": "A",
+   "x": 21.0,
+   "y": -7.0,
+   "z": 47.25,
+   "approach": "front",
+   "strand_x": 14.629999999999999,
+   "depart_y": -0.6299999999999999
+  },
+  {
+   "name": "B",
+   "x": 34.0,
+   "y": 7.0,
+   "z": 32.75,
+   "approach": "back",
+   "strand_x": 27.63,
+   "depart_y": 0.6299999999999999
+  }
+ ],
+ "right_idlers_leftframe": [
+  {
+   "name": "A",
+   "x": 21.0,
+   "y": -7.0,
+   "z": 32.75,
+   "approach": "front",
+   "strand_x": 14.629999999999999,
+   "depart_y": -0.6299999999999999
+  },
+  {
+   "name": "B",
+   "x": 34.0,
+   "y": 7.0,
+   "z": 47.25,
+   "approach": "back",
+   "strand_x": 27.63,
+   "depart_y": 0.6299999999999999
+  }
+ ],
+ "carrier_belts": [
+  {
+   "side": "left",
+   "level": "upper",
+   "y": -0.6299999999999999,
+   "z": 47.25,
+   "x_entry": -27.0
+  },
+  {
+   "side": "left",
+   "level": "lower",
+   "y": 0.6299999999999999,
+   "z": 32.75,
+   "x_entry": -27.0
+  },
+  {
+   "side": "right",
+   "level": "upper",
+   "y": 0.6299999999999999,
+   "z": 47.25,
+   "x_entry": 27.0
+  },
+  {
+   "side": "right",
+   "level": "lower",
+   "y": -0.6299999999999999,
+   "z": 32.75,
+   "x_entry": 27.0
+  }
+ ]
+}
