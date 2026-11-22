@@ -376,16 +376,6 @@ def run():
     return g, rep
 
 
-if __name__ == "__main__":
-    g, rep = run()
-    print(json.dumps({k: v for k, v in rep.items() if k not in ("poses", "params")}, indent=1, default=float))
-    bad = [p for p in rep["poses"] if p["part_collisions"] or p["belt_hits"]]
-    print("poses with issues:", len(bad))
-    for p in bad[:6]:
-        print(p)
-    print("clamp fit sample:", rep["poses"][0]["clamp_fit"])
-
-
 def export_scene(g, Xc, Yg, out_dir):
     """Write one STL per component group (for rendering)."""
     os.makedirs(out_dir, exist_ok=True)
@@ -399,3 +389,17 @@ def export_scene(g, Xc, Yg, out_dir):
         tag = "belt1" if b["name"].startswith("belt1") else "belt2"
         to_trimesh(union([x for x in boxes if x is not None])).export(os.path.join(out_dir, f"{tag}.stl"))
     return list(parts) + ["belt1", "belt2"]
+
+
+if __name__ == "__main__":
+    g, rep = run()
+    print(json.dumps({k: v for k, v in rep.items() if k not in ("poses", "params")}, indent=1, default=float))
+    bad = [p for p in rep["poses"] if p["part_collisions"] or p["belt_hits"]]
+    print("poses with issues:", len(bad))
+    for p in bad[:6]:
+        print(p)
+    if "--scenes" in sys.argv:   # one STL per component at three poses, for rendering
+        (x0, x1), (y0, y1) = rep["carrier_x_range"], rep["gantry_y_range"]
+        for tag, (X, Y) in {"center": ((x0 + x1) / 2, (y0 + y1) / 2), "front_left": (x0 + 0.5, y0 + 0.5),
+                            "back_right": (x1 - 0.5, y1 - 0.5)}.items():
+            export_scene(g, X, Y, os.path.join(SIM, f"scene_{tag}"))

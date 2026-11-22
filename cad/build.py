@@ -1,18 +1,12 @@
 """Build the three printable parts.  Usage:  python3 cad/build.py
 Edit Params in gantry.py (or pass overrides below) and re-run."""
 import json, os, sys
-import numpy as np
 sys.path.insert(0, os.path.dirname(__file__))
 from gantry import Params, build_joiner, build_carrier, load_original_carrier, mirror_x, to_trimesh
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "stl")
 SRC = os.path.join(ROOT, "cad", "source", "Hypercube300V2_M12_Sensorless_Carrier.stl")
-
-
-def rot(M, axis, deg):
-    v = [0, 0, 0]; v["xyz".index(axis)] = deg
-    return M.rotate(v)
 
 
 def drop(M):
@@ -30,12 +24,10 @@ def build(P=None):
     C, ci = build_carrier(P, orig)
 
     parts = {"xy_joiner_left": JL, "xy_joiner_right": JR, "hotend_carrier_mgn9h": C}
-    # print orientation: joiners on their flat outboard face, carrier on its right-hand side
-    printed = {
-        "xy_joiner_left": drop(rot(JL, "y", -90)),    # outboard face (x=-13.5) -> bed
-        "xy_joiner_right": drop(rot(JR, "y", 90)),    # outboard face (x=+13.5) -> bed
-        "hotend_carrier_mgn9h": drop(rot(C, "y", 90)),  # on its right-hand clamp face (+X) -> bed, use a brim
-    }
+    # print orientation = installed orientation for all three parts:
+    #  - belt tension and idler loads then run along the layers, never across them
+    #  - the joiners' MGN12H face and the carrier's tube block print flat on the bed
+    printed = {k: drop(M) for k, M in parts.items()}
     info = {}
     for k, M in parts.items():
         t = to_trimesh(M)
