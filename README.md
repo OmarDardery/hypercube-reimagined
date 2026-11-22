@@ -19,7 +19,8 @@ All parts are exported in **print orientation, which is the same as installed or
 |---|---|---|
 | `xy_joiner_left.stl` | 92.7 cm³ | 32 cm², mostly short bridges over the idler pockets |
 | `xy_joiner_right.stl` | 92.0 cm³ | 33 cm² |
-| `hotend_carrier_mgn9h.stl` | 56.2 cm³ | 17 cm² |
+| `hotend_carrier_mgn9h.stl` | 52.1 cm³ | 17 cm² |
+| `belt_clamp_cap_x2.stl` (**print 2**, toothed face up) | 3.1 cm³ | none |
 
 `*_installed.stl` are the same parts positioned in machine coordinates, for CAD or checking fit.
 
@@ -54,9 +55,13 @@ All parts are exported in **print orientation, which is the same as installed or
 - This is your original `Hypercube300V2_M12_Sensorless_Carrier`, kept at exactly the same position relative to the belts. Nozzle height and the probe offset (**X −23.9, Y −1.6**) are unchanged.
 - **The old rod tube is flattened.** The round lower tube is cut away and replaced by a flat-faced block of the same footprint. That block carries the original **rear blower bracket** and runs up into the belt-clamp block. The upper tube is removed entirely.
 - **Front mount:** a 6 mm plate rises in front of the beam and bolts to the front of the sideways MGN9H with 4 × M3×6. The heads are counterbored, leaving 3 mm under each. The plate overlaps the clamp block by 9 mm.
-- **Belt clamps:** four GT2 toothed channels, 1.6 mm wide with 7 teeth, with at least 3 mm of wall behind each.
-  - Upper belts drop in from the top; lower belts load from below.
-  - Pull the belt tight, push it into the teeth, and add a zip tie if you like.
+- **Belt clamps (screw-tightened):** each end of the carrier is split at the belt plane into a fixed jaw and a removable **clamp cap**.
+  - **3 × M3 per side** hold the cap on: one below the lower belt, one between the belts, one above the upper belt. They thread into heat-set inserts in the jaw. Tightening them squeezes **both belts at once**, so there are 6 screws in total.
+  - Each belt sits in a GT2 toothed channel (2 mm pitch, 7 teeth) cut into the half its teeth face. The flat face of the other half presses the belt's back.
+  - The channel is 1.25 mm deep against a 1.38 mm belt, so a fully tightened cap pinches each belt by 0.13 mm on top of the tooth grip.
+  - The cap is symmetric about the belt mid-height, so the same part fits the left and right ends (one is turned upside down).
+
+![clamps](docs/img/belt_clamps.png)
 - The only walls under 1 mm are inside the original groove-mount clamp detail, unchanged from your current part.
 
 ## Simulated gantry (`cad/simulate.py`)
@@ -76,11 +81,11 @@ It then searches for the travel limits and checks a 5 × 5 grid of positions ins
 | Part-to-part collisions (all pairs, 25 positions) | **none** |
 | Belts vs. every part (straight runs and idler wraps) | **none** |
 | Blower space vs. joiners, beam and belts | **clear** |
-| Belt ends fit their clamp channels at the right height (4 ends) | **0.000 mm³ interference** |
+| Belt ends seated between jaw and cap at the right height (4 ends), backs free of plastic | **0.000 mm³ interference** |
 | Total belt length across the workspace | constant to **±0.0015 mm** |
 | CoreXY kinematics per 10 mm move | belt 1: +ΔX +ΔY, belt 2: −ΔX +ΔY ✔ |
 | Largest belt angle off X or Y | 0.68° (only at the very back, inherited from the original idler sizes) |
-| X travel | **293.3 mm** (= rail spacing − 146.7) |
+| X travel | **292.9 mm** (= rail spacing − 147.1) |
 | Y travel | **351.0 mm** |
 | Nozzle height | 9.35 mm below the top face of the Y 2020 (same as before) |
 | Top of gantry | carrier plate at 81.3 mm above the Y 2020, about the same as the old carrier (80.7 mm) |
@@ -104,7 +109,7 @@ The parts are generated from parameters in `cad/gantry.py → Params`. These are
 ```bash
 pip install manifold3d trimesh numpy scipy
 python3 cad/build.py               # writes stl/*.stl (~1 s)
-python3 cad/simulate.py [--scenes] # writes sim/report.json (~6 s); --scenes also writes per-part STLs
+python3 cad/simulate.py [--scenes] # writes sim/report.json (~7 s); --scenes also writes per-part STLs
 ```
 
 ## Hardware
@@ -119,6 +124,7 @@ python3 cad/simulate.py [--scenes] # writes sim/report.json (~6 s); --scenes als
 | 2 | M3×20 SHCS, lower idlers (thread into the printed Ø2.8 hole) |
 | 8 | M5×10 + M5 T-nuts, joiner cheeks to the beam (the front-slot T-nuts share the slot with the rail, outside its ends) |
 | 4 | M3×6 SHCS, carrier to MGN9H |
+| 6 | M3×10 SHCS + 6 M3 heat-set inserts (short, M3×5.7, Ø4.0 hole), belt clamp caps |
 | 4 | 20T GT2 idlers (reuse the originals) |
 
 ## Assembly order
@@ -127,6 +133,6 @@ python3 cad/simulate.py [--scenes] # writes sim/report.json (~6 s); --scenes als
 2. Bolt each joiner to its MGN12H. Fit its idlers: put the stack into the pocket from the side, then drive the bolt from the top.
 3. Drop the beam onto the joiner seats. Loosely fit the 8 × M5 cheek bolts, square the gantry, then tighten.
 4. Bolt the carrier to the MGN9H from the front, and fit the hotend, probe and blower.
-5. Route the belts as before. Clamp the upper ends from the top and the lower ends from below, then tension.
+5. Fit the 6 heat-set inserts into the carrier jaws. Route the belts as before. At each end, lay both belt ends into their channels with the teeth meshed, pull them to tension, fit the cap, and tighten its 3 screws evenly.
 
 Note: the beam covers some of the MGN12H screw shafts and the lower-idler access holes, so do steps 2 and 3 in that order.

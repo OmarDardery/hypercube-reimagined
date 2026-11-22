@@ -69,6 +69,9 @@ class Params:
     # --- carrier ---
     CARRIER_HALF_W: float = 27.0
     CLAMP_LEN: float = 16.0
+    CLAMP_X0: float = 11.0        # inner end of each belt clamp (carrier-local |x|)
+    CLAMP_Z0: float = 22.5        # bottom of the clamp caps (top is mirrored about the belt mid-height)
+    CAP_T: float = 6.0            # clamp cap thickness (behind the belt plane)
 
     @property
     def zL(self): return self.ROD_DZ - self.LEVEL_HALF_GAP
@@ -284,53 +287,69 @@ def build_carrier(P, orig):
     # flatten the old lower rod tube: cut the round tube away, replace it with a flat-faced block
     # of the same footprint (it still carries the blower bracket and ties it to the front plate)
     mod = mod - xcyl(0.0, zrod, -18.7, 21.0, 18.6)
-    tube_block = box(-18.63, 18.95, -9.5, 11.0, zrod - 9.25, zL - 3.97)   # runs up into the clamp block
+    zmid = (zL + zU) / 2
+    # flat block that replaces the tube; it steps down under the belt clamps so the caps fit
+    tube_block = box(-18.63, 18.95, -9.5, 11.0, zrod - 9.25, P.CLAMP_Z0 - 0.25)
+    riser = box(-P.CLAMP_X0 + 0.25, P.CLAMP_X0 - 0.25, -9.5, 4.5, P.CLAMP_Z0 - 0.6, zL - 3.97)
 
     y_front = -8.0
     plate_t = 6.0
+    cz0, cz1 = P.CLAMP_Z0, 2 * zmid - P.CLAMP_Z0            # clamp zone, symmetric about the belt mid-height
     body = union([
         mod,
         tube_block,
-        box(-hw, hw, y_front, 4.5, zL - 4.0, top),                       # belt-clamp block (>=3 mm behind channels)
-        box(-17.47, 19.47, -7.47, y_front + 0.53, zL - 3.97, top - 0.03),  # tie module to block
-        box(-hw, hw, cf - plate_t, cf, top - 9.0, P.BEAM_TOP + 3.0),     # plate bolted to the MGN9H face,
-                                                                          # overlapping the clamp block by 9 mm
+        riser,
+        box(-P.CLAMP_X0 + 0.25, P.CLAMP_X0 - 0.25, y_front, 4.5, zL - 4.0, top), # centre block
+        box(-hw, -P.CLAMP_X0 + 0.5, y_front, 0.0, cz0 - 0.5, cz1),             # left clamp jaw (fixed half)
+        box(P.CLAMP_X0 - 0.5, hw, y_front, 0.0, cz0 - 0.5, cz1),               # right clamp jaw (fixed half)
+        box(-17.47, 19.47, -7.47, y_front + 0.53, zL - 3.97, top - 0.03),       # tie module to block
+        box(-hw, hw, cf - plate_t, cf, top - 9.0, P.BEAM_TOP + 3.0),           # plate bolted to the MGN9H face,
+                                                                                # overlapping the clamp block by 9 mm
     ])
-    cut = []
-    belts = []
+    # room for the removable caps (0.25 mm clearance except on the clamping face y = 0)
+    for sgn in (-1, 1):
+        xa, xb = sorted([sgn * (P.CLAMP_X0 - 0.25), sgn * (hw + 5)])
+        body = body - box(xa, xb, 0.0, 30.0, cz0 - 0.25, cz1 + 0.25)
+
+    cut, cap_cut = [], {-1: [], 1: []}
+    belts, ridges, cap_ridges = [], [], {-1: [], 1: []}
+    D, RIDGE_TOP = 1.25, 0.60          # channel depth (belt is 1.38 -> 0.13 mm squeeze); ridge top below split plane
     for s in (-1, 1):
-        x0, x1 = (s * hw, s * (hw - P.CLAMP_LEN))
-        xa, xb = min(x0, x1), max(x0, x1)
+        side = "left" if s < 0 else "right"
+        xa, xb = sorted([s * P.CLAMP_X0, s * (hw + 1)])
         for lvl, z in (("upper", zU), ("lower", zL)):
-            # which joiner feeds this end
-            side = "left" if s < 0 else "right"
-            I = idlers(P, side)
-            i = [k for k in I if abs(k["z"] - z) < 1e-6][0]
-            yb = i["depart_y"]
-            if lvl == "upper":
-                zc0, zc1 = z - 3.5, top + 1     # open on top: drop the belt in
-            else:
-                zc0, zc1 = zrod - 10.0, z + 3.5   # slit open to the bottom: load the belt from below
-            cut.append(box(xa - 1, xb, yb - 0.8, yb + 0.8, zc0, zc1))
-            belts.append(dict(side=side, level=lvl, y=yb, z=z, x_entry=s * hw))
+            i = [k for k in idlers(P, side) if abs(k["z"] - z) < 1e-6][0]
+            td = -1 if i["depart_y"] < 0 else 1           # side the belt teeth face
+            ch = box(xa, xb, min(0, td * D), max(0, td * D), z - 3.2, z + 3.2)
+            for k in range(7):                              # GT2 2 mm pitch comb in the channel floor
+                xc = s * (hw - 2.0 - 2.0 * k)
+                r_ = box(xc - 0.5, xc + 0.5, min(td * RIDGE_TOP, td * (D + 0.2)), max(td * RIDGE_TOP, td * (D + 0.2)),
+                         z - 3.2, z + 3.2)
+                (ridges if td < 0 else cap_ridges[s]).append(r_)
+            (cut if td < 0 else cap_cut[s]).append(ch)
+            belts.append(dict(side=side, level=lvl, y=i["depart_y"], z=z, x_entry=s * hw, teeth=td))
+    # clamp screws: 3 per side (below / between / above the belts), heads on the cap, heat-set inserts in the jaw
+    screws = []
+    sx = (P.CLAMP_X0 + hw) / 2
+    for s in (-1, 1):
+        for zs in (zL - 3.2 - 3.3, zmid, zU + 3.2 + 3.3):
+            screws.append((s * sx, zs))
+            cut.append(ycyl(s * sx, zs, -6.0, 0.01, 4.0))                  # M3 heat-set insert, 6 deep
+            cap_cut[s].append(ycyl(s * sx, zs, -1, P.CAP_T + 1, 3.4))
     # MGN9H screws
-    for sx in (-1, 1):
+    for sx_ in (-1, 1):
         for sy in (-1, 1):
-            x, z = sx * P.MGN9H_C / 2, rzc + sy * P.MGN9H_B / 2
+            x, z = sx_ * P.MGN9H_C / 2, rzc + sy * P.MGN9H_B / 2
             cut.append(ycyl(x, z, cf - plate_t - 1, cf + 1, 3.4))     # M3x6 from the front
             cut.append(ycyl(x, z, cf - plate_t - 1, cf - 3.0, 6.2))   # head recess: 3 mm left under it
-    C = body - union(cut)
-    # comb ridges (GT2 2 mm pitch) on the tooth-side wall of each channel
-    ridges = []
-    for b in belts:
-        s = -1 if b["side"] == "left" else 1
-        tooth_dir = -1 if b["y"] < 0 else 1
-        yw = b["y"] + tooth_dir * 1.0          # 0.2 mm embedded into the wall
-        yi = b["y"] + tooth_dir * 0.05
-        ya, yb2 = min(yw, yi), max(yw, yi)
-        z0, z1 = b["z"] - 3.3, b["z"] + 3.3
-        for k in range(7):
-            xc = s * (hw - 2.0 - 2.0 * k)
-            ridges.append(box(xc - 0.5, xc + 0.5, ya, yb2, z0, z1))
-    C = C + union(ridges)
-    return C, dict(belts=belts, top=top, hotend_axis=(0.0, -23.15))
+    C = body - union(cut) + union(ridges)
+    caps = {}
+    for s in (-1, 1):
+        xa, xb = sorted([s * P.CLAMP_X0, s * hw])
+        cap = box(xa, xb, 0.0, P.CAP_T, cz0, cz1)
+        if cap_cut[s]:
+            cap = cap - union(cap_cut[s])
+        if cap_ridges[s]:
+            cap = cap + union(cap_ridges[s])
+        caps["left" if s < 0 else "right"] = cap
+    return C, dict(belts=belts, top=top, hotend_axis=(0.0, -23.15), caps=caps, clamp_screws=screws)

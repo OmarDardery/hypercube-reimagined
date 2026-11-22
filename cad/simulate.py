@@ -5,7 +5,7 @@ import json, math, os, sys
 import numpy as np
 import manifold3d as m3
 sys.path.insert(0, os.path.dirname(__file__))
-from gantry import (Params, box, zcyl, union, to_trimesh, mirror_x, build_joiner,
+from gantry import (Params, box, zcyl, ycyl, union, to_trimesh, mirror_x, build_joiner,
                     build_carrier, load_original_carrier, idlers)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -166,6 +166,8 @@ class Gantry:
         JRl, _ = build_joiner(P, "right")
         self.JR = mirror_x(JRl)
         self.C, self.ci = build_carrier(P, load_original_carrier(SRC))
+        heads = [ycyl(x, z, P.CAP_T, P.CAP_T + 3.0, 5.5) for x, z in self.ci["clamp_screws"]]
+        self.caps = union(list(self.ci["caps"].values()) + heads)      # caps + M3 screw heads
         self.H, self.nozzle_z = hotend(P)
         self.PR, self.probe_xy = probe(P, self.nozzle_z)
         self.static, self.rail_y = frame(P)
@@ -203,10 +205,11 @@ class Gantry:
             "rail_X_mgn9": T(self.rail9, 0, Yg),
             "mgn9h": T(self.mgn9h, Xc, Yg),
             "carrier": T(self.C, Xc, Yg),
+            "clamp_caps": T(self.caps, Xc, Yg),
             "hotend": T(self.H, Xc, Yg),
             "probe": T(self.PR, Xc, Yg),
             # space claim for the part-cooling blower on the rear bracket (5015 class)
-            "blower_envelope": T(box(-25, 25, 4.5, 50, 0, P_.beam_bot - 1.5), Xc, Yg),
+            "blower_envelope": T(box(-25, 25, P_.CAP_T + 3.5, 50, 0, P_.beam_bot - 1.5), Xc, Yg),
         }
         for side in ("left", "right"):
             discs = []
@@ -232,6 +235,7 @@ ALLOWED = {
     frozenset(["probe", "carrier"]),          # probe passes through its ring
     frozenset(["hotend", "carrier"]),         # groove mount
     frozenset(["blower_envelope", "carrier"]),  # blower bolts to the rear bracket
+    frozenset(["clamp_caps", "carrier"]),       # caps are screwed onto the clamp jaws (touching faces)
 }
 
 
@@ -273,18 +277,19 @@ def belt_clearance(g, Xc, Yg, parts):
 
 
 def clamp_check(g, Xc, Yg):
-    """Model the belt backing inside each carrier clamp channel and make sure it fits."""
+    """Belt clamped between jaw and cap: its backing (between the split plane and the comb
+    ridge tops) must be free of plastic, and the channel must be shallower than the belt
+    so tightening the 3 screws squeezes it."""
     hits = []
-    C = g.C.translate([Xc, Yg, 0])
-    hw = g.P.CARRIER_HALF_W
+    A = (g.C + g.caps).translate([Xc, Yg, 0])
+    hw, x0 = g.P.CARRIER_HALF_W, g.P.CLAMP_X0
     for bb in g.ci["belts"]:
         s = -1 if bb["side"] == "left" else 1
-        td = -1 if bb["y"] < 0 else 1
-        ya, yb = sorted([bb["y"] - 0.75 * td, bb["y"] - 0.2 * td])
-        x0, x1 = sorted([s * hw, s * (hw - g.P.CLAMP_LEN + 1)])
-        M = box(Xc + x0, Xc + x1, Yg + ya, Yg + yb, bb["z"] - 3, bb["z"] + 3)
-        v = (M ^ C).volume()
-        hits.append((f"{bb['side']}-{bb['level']}", round(v, 3)))
+        td = bb["teeth"]
+        ya, yb = sorted([td * 0.05, td * 0.55])
+        xa, xb = sorted([s * hw, s * x0])
+        M = box(Xc + xa, Xc + xb, Yg + ya, Yg + yb, bb["z"] - 2.9, bb["z"] + 2.9)
+        hits.append((f"{bb['side']}-{bb['level']}", round((M ^ A).volume(), 3)))
     return hits
 
 
@@ -298,7 +303,7 @@ def travel_limits(g):
         r0, r1 = g.rail9_x
         if Xc - P.MGN9H_L / 2 < r0 or Xc + P.MGN9H_L / 2 > r1:
             return False
-        return not collisions(parts, only_with={"carrier", "hotend", "probe", "mgn9h", "blower_envelope"})
+        return not collisions(parts, only_with={"carrier", "clamp_caps", "hotend", "probe", "mgn9h", "blower_envelope"})
 
     def y_ok(Yg, Xc):
         parts = dict(g.pose(Xc, Yg)); parts.update(g.static)
