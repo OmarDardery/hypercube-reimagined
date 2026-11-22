@@ -71,7 +71,9 @@ class Params:
     @property
     def BEAM_TOP(self): return self.beam_bot + 20.0
     @property
-    def x_carriage_top(self): return self.BEAM_TOP + self.MGN9_H
+    def x_rail_zc(self): return self.beam_bot + 10.0          # MGN9 rail centred on the beam's front face
+    @property
+    def x_carriage_face(self): return self.BEAM_Y - 10.0 - self.MGN9_H   # Y of the MGN9H front (mounting) face
     @property
     def pass_x(self): return self.IDLER_A[0] + self.ROD_DX - self.IDLER_PITCH_R
 
@@ -253,7 +255,8 @@ def build_carrier(P, orig):
     zL, zU = P.zL, P.zU
     hw = P.CARRIER_HALF_W
     top = zU + 3.5 + 4.25
-    ct = P.x_carriage_top
+    cf = P.x_carriage_face
+    rzc = P.x_rail_zc
     # keep the whole original below the new clamp-block top (incl. the rear blower bracket),
     # drop the upper rod tube, and fill the lower rod bore solid ("flatten the rod holes")
     mod = mod ^ box(-200, 200, -200, 200, -200, top - 0.02)
@@ -261,16 +264,13 @@ def build_carrier(P, orig):
     bore_fill = xcyl(0.0, zrod, -18.63, 18.63, 12.4)
 
     y_front = -8.0
-    y_wall = P.BEAM_Y - 10 - 1.0               # 1 mm in front of the beam's front face
-    y_back = P.BEAM_Y + 10 + 1.0
-    sad0, sad1 = ct, ct + 5.0
+    plate_t = 5.0
     body = union([
         mod,
         bore_fill,
         box(-hw, hw, y_front, 2.63, zL - 4.0, top),                      # belt-clamp block
         box(-17.47, 19.47, -7.47, y_front + 0.53, zL - 3.97, top - 0.03),  # tie module to block
-        box(-hw, hw, y_front, y_wall, top - 0.03, sad1),                 # wall up the beam's front
-        box(-hw, hw, y_front, y_back, sad0, sad1),                       # saddle on the MGN9H
+        box(-hw, hw, cf - plate_t, cf, top - 0.03, P.BEAM_TOP),          # plate bolted to the MGN9H face
     ])
     cut = []
     belts = []
@@ -284,7 +284,7 @@ def build_carrier(P, orig):
             i = [k for k in I if abs(k["z"] - z) < 1e-6][0]
             yb = i["depart_y"]
             if lvl == "upper":
-                zc0, zc1 = z - 3.5, top - 0.5   # closed above by the wall; belt goes in from the side
+                zc0, zc1 = z - 3.5, top + 1     # open on top: drop the belt in
             else:
                 zc0, zc1 = zL - 5.0, z + 3.5
             cut.append(box(xa - 1, xb, yb - 0.8, yb + 0.8, zc0, zc1))
@@ -292,8 +292,8 @@ def build_carrier(P, orig):
     # MGN9H screws
     for sx in (-1, 1):
         for sy in (-1, 1):
-            x, y = sx * P.MGN9H_C / 2, P.BEAM_Y + sy * P.MGN9H_B / 2
-            cut.append(zcyl(x, y, ct - 1, ct + 6, 3.4))
+            x, z = sx * P.MGN9H_C / 2, rzc + sy * P.MGN9H_B / 2
+            cut.append(ycyl(x, z, cf - plate_t - 1, cf + 1, 3.4))     # M3x8 from the front
     C = body - union(cut)
     # comb ridges (GT2 2 mm pitch) on the tooth-side wall of each channel
     ridges = []
@@ -309,16 +309,6 @@ def build_carrier(P, orig):
             ridges.append(box(xc - 0.5, xc + 0.5, ya, yb2, z0, z1))
     C = C + union(ridges)
     return C, dict(belts=belts, top=top, hotend_axis=(0.0, -23.15))
-
-
-# --------------------------------------------------------------------------- hardware models (sim)
-def hardware(P):
-    hw = {}
-    hw["mgn12_rail"] = box(-P.MGN12_RAIL_W / 2, P.MGN12_RAIL_W / 2, 0, 1, 0, P.MGN12_RAIL_H)   # y scaled later
-    hw["mgn12h"] = box(-P.MGN12H_W / 2, P.MGN12H_W / 2, -P.MGN12H_L / 2, P.MGN12H_L / 2, P.MGN12_H1, P.MGN12_H)
-    hw["mgn9h"] = box(-P.MGN9H_L / 2, P.MGN9H_L / 2, P.BEAM_Y - P.MGN9H_W / 2, P.BEAM_Y + P.MGN9H_W / 2,
-                      P.BEAM_TOP + P.MGN9_H1, P.x_carriage_top)
-    return hw
 
 
 def extrusion_2020_x(x0, x1, yc, ztop):

@@ -174,10 +174,11 @@ class Gantry:
         self.mgn12h = box(-P.MGN12H_W / 2, P.MGN12H_W / 2, -P.MGN12H_L / 2, P.MGN12H_L / 2, P.MGN12_H1, P.MGN12_H)
         self.beam = box(P.BEAM_END_X, S - P.BEAM_END_X, P.BEAM_Y - 10, P.BEAM_Y + 10, P.beam_bot, P.BEAM_TOP)
         self.rail9_x = ((S - P.X_RAIL_LEN) / 2, (S + P.X_RAIL_LEN) / 2)
-        self.rail9 = box(self.rail9_x[0], self.rail9_x[1], P.BEAM_Y - P.MGN9_RAIL_W / 2,
-                         P.BEAM_Y + P.MGN9_RAIL_W / 2, P.BEAM_TOP, P.BEAM_TOP + P.MGN9_RAIL_H)
-        self.mgn9h = box(-P.MGN9H_L / 2, P.MGN9H_L / 2, P.BEAM_Y - P.MGN9H_W / 2, P.BEAM_Y + P.MGN9H_W / 2,
-                         P.BEAM_TOP + P.MGN9_H1, P.x_carriage_top)
+        bf = P.BEAM_Y - 10.0                      # beam front face; MGN9 rail lies on it sideways
+        self.rail9 = box(self.rail9_x[0], self.rail9_x[1], bf - P.MGN9_RAIL_H, bf,
+                         P.x_rail_zc - P.MGN9_RAIL_W / 2, P.x_rail_zc + P.MGN9_RAIL_W / 2)
+        self.mgn9h = box(-P.MGN9H_L / 2, P.MGN9H_L / 2, P.x_carriage_face, bf - P.MGN9_H1,
+                         P.x_rail_zc - P.MGN9H_W / 2, P.x_rail_zc + P.MGN9H_W / 2)
         # stationary pulleys as 18 mm discs, 8 mm tall, at their belt level
         cd = self.cd; xs = [cd["xc"], S - cd["xc"]]
         devs = []
@@ -328,7 +329,7 @@ def run():
     rep["carrier_x_range"] = [xmin, xmax]; rep["gantry_y_range"] = [ymin, ymax]
     rep["x_travel"] = xmax - xmin; rep["y_travel"] = ymax - ymin
     rep["nozzle_z"] = g.nozzle_z
-    rep["nozzle_xy_offset_from_carriage"] = [0.0, -23.15 - P.BEAM_Y]
+    rep["nozzle_y_from_mgn9h_face"] = -23.15 - P.x_carriage_face
     rep["probe_offset_from_nozzle"] = [g.probe_xy[0], g.probe_xy[1] + 23.15]
 
     # sweep a grid (margin 0.5 mm inside limits)
