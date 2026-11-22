@@ -191,6 +191,7 @@ class Gantry:
     def pose(self, Xc, Yg):
         """Xc = carrier (hot-end axis) X, Yg = gantry Y (joiner centre)."""
         S = self.P.Y_RAIL_SPACING
+        P_ = self.P
         T = lambda M, x, y: M.translate([x, y, 0])
         moving = {
             "joiner_left": T(self.JL, 0, Yg),
@@ -203,6 +204,8 @@ class Gantry:
             "carrier": T(self.C, Xc, Yg),
             "hotend": T(self.H, Xc, Yg),
             "probe": T(self.PR, Xc, Yg),
+            # space claim for the part-cooling blower on the rear bracket (5015 class)
+            "blower_envelope": T(box(-25, 25, 4.5, 50, 0, P_.beam_bot - 1.5), Xc, Yg),
         }
         for side in ("left", "right"):
             discs = []
@@ -227,6 +230,7 @@ ALLOWED = {
     frozenset(["mgn9h", "rail_X_mgn9"]),
     frozenset(["probe", "carrier"]),          # probe passes through its ring
     frozenset(["hotend", "carrier"]),         # groove mount
+    frozenset(["blower_envelope", "carrier"]),  # blower bolts to the rear bracket
 }
 
 
@@ -293,7 +297,7 @@ def travel_limits(g):
         r0, r1 = g.rail9_x
         if Xc - P.MGN9H_L / 2 < r0 or Xc + P.MGN9H_L / 2 > r1:
             return False
-        return not collisions(parts, only_with={"carrier", "hotend", "probe", "mgn9h"})
+        return not collisions(parts, only_with={"carrier", "hotend", "probe", "mgn9h", "blower_envelope"})
 
     def y_ok(Yg, Xc):
         parts = dict(g.pose(Xc, Yg)); parts.update(g.static)

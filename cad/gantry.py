@@ -51,9 +51,11 @@ class Params:
     MGN9_RAIL_W: float = 9.0; MGN9_RAIL_H: float = 6.5; MGN9H_B: float = 15.0; MGN9H_C: float = 16.0
 
     # --- X beam (2020) ---
-    BEAM_Y: float = 13.0          # beam centre Y (behind the belt plane)
-    BEAM_TOP: float = 22.0        # beam top Z
-    BEAM_END_X: float = 19.5      # beam end, measured inboard from Y-rail centre
+    BEAM_Y: float = 15.0          # beam centre Y: sits ON TOP of the joiners, offset back so the
+                                  # belts pass under its front edge into the carrier
+    BEAM_END_X: float = -5.0      # beam end X (relative to Y-rail centre); length = spacing - 2*this
+    SEAT_T: float = 5.0           # joiner roof / beam seat thickness above the upper idler pocket
+    CHEEK_T: float = 5.0          # joiner cheeks clamping the beam front/back faces
     X_RAIL_LEN: float = 350.0     # MGN9 rail length, centred on the beam
 
     # --- carrier ---
@@ -65,7 +67,9 @@ class Params:
     @property
     def zU(self): return self.ROD_DZ + self.LEVEL_HALF_GAP
     @property
-    def beam_bot(self): return self.BEAM_TOP - 20.0
+    def beam_bot(self): return self.zU + self.POCKET_H / 2 + self.SEAT_T
+    @property
+    def BEAM_TOP(self): return self.beam_bot + 20.0
     @property
     def x_carriage_top(self): return self.BEAM_TOP + self.MGN9_H
     @property
@@ -140,16 +144,18 @@ def build_joiner(P, side="left"):
     base_top = car_top + 5.0
     zl0, zl1 = lo["z"] - hb, lo["z"] + hb
     zu0, zu1 = up["z"] - hb, up["z"] + hb
-    roof_top = zu1 + 3.0
     yF, yR = -P.MGN12H_L / 2, P.MGN12H_L / 2
     xo = -P.MGN12H_W / 2
     by0, by1 = P.BEAM_Y - 10, P.BEAM_Y + 10
-    xe = P.BEAM_END_X
     xmax = max(A["x"], B["x"]) + 8.0   # like the original: outer pocket breaks through the inboard face
     ymid = 19.5
 
+    seat_top = P.beam_bot
+    yback = by1 + P.CHEEK_T                                   # back face of the rear cheek
+    ftop = P.BEAM_TOP - 4.0                                   # cheek top (below beam top edge radius)
+
     def pillar_free(i):
-        # solid behind/beside the idler where no belt runs (see module docstring)
+        # solid beside the idler where no belt runs on that level
         if i["name"] == "A":   # wraps outboard->back, so the back side is free
             return box(i["x"] - 10, i["x"] + 7, i["y"] + 11, ymid, 0, 1)
         else:                  # wraps outboard->front, so the front side (below depart line) is free
@@ -165,14 +171,13 @@ def build_joiner(P, side="left"):
     solid = union([
         box(xo, -xo, yF, yR, car_top, base_top),                       # carriage pad
         box(xo, 14.0, yF, yR, base_top, zl0),                          # deck over carriage
-        box(14.0, xmax, yF, by1 + 5, P.BEAM_TOP, zl0),                 # deck over beam end
-        box(14.5, xe, by0 - 5, by1 + 5, P.beam_bot, P.BEAM_TOP + 0.5), # beam end stop wall
-        box(xe, xmax, by0 - 5, by0, P.beam_bot, P.BEAM_TOP + 0.5),     # front cheek
-        box(xe, xmax, by1, by1 + 5, P.beam_bot, P.BEAM_TOP + 0.5),     # rear cheek
+        box(14.0, xmax, -ymid, ymid, zl0 - 8.0, zl0),                  # floor of the lower idler
         band(lo, zl0, zl1),                                            # lower belt level pillars
         box(xo, xmax, -ymid, ymid, zl1, zu0),                          # middle plate
-        band(up, zu0, zu1),                                            # upper belt level pillars
-        box(xo, min(xmax, up["x"] + P.POCKET_D / 2 + 2.25), -ymid, ymid, zu1, roof_top),  # roof
+        box(xo, xmax, -ymid, ymid, zu0, zu1),                          # upper level: full, belts cut out below
+        box(xo, xmax, -ymid, yback, zu1, seat_top),                    # roof = beam seat
+        box(xo, xmax, by0 - P.CHEEK_T, by0, seat_top - 0.01, ftop),    # front cheek
+        box(xo, xmax, by1, yback, seat_top - 0.01, ftop),              # rear cheek
     ])
 
     cut = []
@@ -191,29 +196,30 @@ def build_joiner(P, side="left"):
     zb = B["z"]
     cut.append(box(P.pass_x - 1.6, P.pass_x + 1.6, -200, 200, zb - 3.75, zb + 3.75))
 
-    # idler bolts M3
-    cut.append(zcyl(up["x"], up["y"], zu0 - 0.01, roof_top + 1, 3.3))
-    cut.append(zcyl(up["x"], up["y"], zl1 + 0.5, zu0 + 0.01, 2.8))
+    # idler bolts M3 (heads recessed so the beam sits flat on the seat)
+    cut.append(zcyl(up["x"], up["y"], zu0 - 0.01, seat_top + 1, 3.3))
+    cut.append(zcyl(up["x"], up["y"], seat_top - 3.5, seat_top + 1, 6.2))
+    cut.append(zcyl(up["x"], up["y"], zl1 - 0.01, zu0 + 0.01, 2.8))
     cut.append(zcyl(lo["x"], lo["y"], zl1 - 0.01, zu0 + 0.01, 3.3))
     cut.append(zcyl(lo["x"], lo["y"], zl0 - 8, zl0 + 0.01, 2.8))
-    cut.append(zcyl(lo["x"], lo["y"], zu0, roof_top + 1, 6.5))       # driver / head access
+    cut.append(zcyl(lo["x"], lo["y"], zu0, seat_top + 1, 6.5))       # driver / head access
 
-    # MGN12H screws: M3, 20x20, counterbored to the top
+    # MGN12H screws: M3, 20x20, counterbored to the seat (fit before the beam)
     for sx in (-1, 1):
         for sy in (-1, 1):
             x, y = sx * P.MGN12H_C / 2, sy * P.MGN12H_B / 2
             cut.append(zcyl(x, y, car_top - 1, base_top + 0.01, 3.4))
-            cut.append(zcyl(x, y, base_top, roof_top + 5, 6.5))
+            cut.append(zcyl(x, y, base_top, seat_top + 1, 6.5))
 
     # beam cheek bolts: M5 into T-nuts in the beam's front & back slots
     zc = P.beam_bot + 10
-    for x in (xe + 7.5, xmax - 6.0):
-        cut.append(ycyl(x, zc, by0 - 10, by1 + 10, 5.5))
+    for x in (xo + 8.0, xmax - 8.0):
+        cut.append(ycyl(x, zc, by0 - 10, yback + 10, 5.5))
     # lightening: hollow the outboard pillar between the screw shafts
-    cut.append(box(-8.5, 6.0, -6.0, 6.0, base_top + 3, roof_top - 3))
+    cut.append(box(-8.5, 6.0, -6.0, 6.0, base_top + 3, zl1 - 1.5))
 
     J = solid - union(cut)
-    return J, dict(idlers=I, roof_top=roof_top, base_top=base_top, xmax=xmax)
+    return J, dict(idlers=I, roof_top=seat_top, base_top=base_top, xmax=xmax)
 
 
 # --------------------------------------------------------------------------- carrier
@@ -248,22 +254,23 @@ def build_carrier(P, orig):
     hw = P.CARRIER_HALF_W
     top = zU + 3.5 + 4.25
     ct = P.x_carriage_top
-    # keep the front module: everything in front of the old plate's back face, below the new top
-    keep = box(-200, 200, -200, -3.47, -200, top - 0.02)
-    mod = mod ^ keep
-    # flatten the old lower X-rod tube (rod axis was at y=0, z=ROD_DZ-25.7)
+    # keep the whole original below the new clamp-block top (incl. the rear blower bracket),
+    # drop the upper rod tube, and fill the lower rod bore solid ("flatten the rod holes")
+    mod = mod ^ box(-200, 200, -200, 200, -200, top - 0.02)
     zrod = P.ROD_DZ - 25.75
-    tube = xcyl(0.0, zrod, -18.6, 18.6, 23.0) ^ box(-200, 200, -11.6, -3.5, -200, 200)
-    mod = mod - tube
-    plate_fill = box(-18.63, 18.63, -6.97, -3.43, zrod - 11.63, zrod + 11.63)
+    bore_fill = xcyl(0.0, zrod, -18.63, 18.63, 12.4)
 
     y_front = -8.0
+    y_wall = P.BEAM_Y - 10 - 1.0               # 1 mm in front of the beam's front face
+    y_back = P.BEAM_Y + 10 + 1.0
+    sad0, sad1 = ct, ct + 5.0
     body = union([
         mod,
-        plate_fill,
+        bore_fill,
         box(-hw, hw, y_front, 2.63, zL - 4.0, top),                      # belt-clamp block
-        box(-hw, hw, 2.6, P.BEAM_Y + P.MGN9H_W / 2 + 1.0, ct, top),      # MGN9H saddle
         box(-17.47, 19.47, -7.47, y_front + 0.53, zL - 3.97, top - 0.03),  # tie module to block
+        box(-hw, hw, y_front, y_wall, top - 0.03, sad1),                 # wall up the beam's front
+        box(-hw, hw, y_front, y_back, sad0, sad1),                       # saddle on the MGN9H
     ])
     cut = []
     belts = []
@@ -277,7 +284,7 @@ def build_carrier(P, orig):
             i = [k for k in I if abs(k["z"] - z) < 1e-6][0]
             yb = i["depart_y"]
             if lvl == "upper":
-                zc0, zc1 = z - 3.5, top + 1
+                zc0, zc1 = z - 3.5, top - 0.5   # closed above by the wall; belt goes in from the side
             else:
                 zc0, zc1 = zL - 5.0, z + 3.5
             cut.append(box(xa - 1, xb, yb - 0.8, yb + 0.8, zc0, zc1))
@@ -286,10 +293,7 @@ def build_carrier(P, orig):
     for sx in (-1, 1):
         for sy in (-1, 1):
             x, y = sx * P.MGN9H_C / 2, P.BEAM_Y + sy * P.MGN9H_B / 2
-            cut.append(zcyl(x, y, ct - 1, ct + 5.01, 3.4))
-            cut.append(zcyl(x, y, ct + 5, top + 1, 6.2))
-    # lightening pocket in the saddle (open top)
-    cut.append(box(-5.0, 5.0, 4.5, P.BEAM_Y + 7.5, ct + 5, top + 1))
+            cut.append(zcyl(x, y, ct - 1, ct + 6, 3.4))
     C = body - union(cut)
     # comb ridges (GT2 2 mm pitch) on the tooth-side wall of each channel
     ridges = []

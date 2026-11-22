@@ -30,11 +30,11 @@ def build(P=None):
     C, ci = build_carrier(P, orig)
 
     parts = {"xy_joiner_left": JL, "xy_joiner_right": JR, "hotend_carrier_mgn9h": C}
-    # print orientation: joiners on their flat outboard face, carrier as the original (plate down)
+    # print orientation: joiners on their flat outboard face, carrier upside down on the saddle
     printed = {
         "xy_joiner_left": drop(rot(JL, "y", -90)),    # outboard face (x=-13.5) -> bed
         "xy_joiner_right": drop(rot(JR, "y", 90)),    # outboard face (x=+13.5) -> bed
-        "hotend_carrier_mgn9h": drop(rot(C, "x", -90)),  # saddle back face on the bed, hot-end side up
+        "hotend_carrier_mgn9h": drop(rot(C, "x", 180)),  # upside down: saddle top on the bed
     }
     info = {}
     for k, M in parts.items():
