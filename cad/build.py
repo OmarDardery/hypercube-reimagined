@@ -2,7 +2,7 @@
 Edit Params in gantry.py (or pass overrides below) and re-run."""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
-from gantry import Params, build_joiner, build_carrier, load_original_carrier, mirror_x, to_trimesh
+from gantry import Params, build_joiner, build_carrier, build_corner_joint, load_original_carrier, mirror_x, to_trimesh
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "stl")
@@ -24,12 +24,15 @@ def build(P=None):
     C, ci = build_carrier(P, orig)
 
     cap = ci["caps"]["left"]                 # left and right caps are the same part (flipped): print 2
-    parts = {"xy_joiner_left": JL, "xy_joiner_right": JR, "hotend_carrier_mgn9h": C, "belt_clamp_cap_x2": cap}
+    joint = build_corner_joint(P)            # same part on all 4 frame corners: print 4
+    parts = {"xy_joiner_left": JL, "xy_joiner_right": JR, "hotend_carrier_mgn9h": C, "belt_clamp_cap_x2": cap,
+             "frame_corner_joint_x4": joint}
     # print orientation = installed orientation for all three parts:
     #  - belt tension and idler loads then run along the layers, never across them
     #  - the joiners' MGN12H face and the carrier's tube block print flat on the bed
     printed = {k: drop(M) for k, M in parts.items()}
     printed["belt_clamp_cap_x2"] = drop(cap.rotate([-90, 0, 0]))   # back face on the bed, toothed face up
+    printed["frame_corner_joint_x4"] = drop(joint.rotate([90, 0, 0]))  # one plate flat on the bed, keys up
     info = {}
     for k, M in parts.items():
         t = to_trimesh(M)

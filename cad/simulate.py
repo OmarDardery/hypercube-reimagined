@@ -5,7 +5,7 @@ import json, math, os, sys
 import numpy as np
 import manifold3d as m3
 sys.path.insert(0, os.path.dirname(__file__))
-from gantry import (Params, box, zcyl, ycyl, union, to_trimesh, mirror_x, build_joiner,
+from gantry import (Params, box, zcyl, ycyl, union, build_corner_joint, to_trimesh, mirror_x, build_joiner,
                     build_carrier, load_original_carrier, idlers)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -15,17 +15,44 @@ CONTACT_TOL = 1.0   # mm^3: bolted faces that merely touch
 
 
 # ---------------------------------------------------------------- static frame + hardware
-def frame(P):
+def profile2020(axis, a0, a1, c1, c2, slot=6.2, depth=6.0):
+    """2020 extrusion along `axis` from a0 to a1; (c1, c2) = centre of its cross-section in the
+    other two axes (x,y order kept).  The four slot openings are cut so keys can be checked."""
+    lo = [c1 - 10, c2 - 10]; hi = [c1 + 10, c2 + 10]
+    def bx(r0, r1, s0, s1):
+        if axis == "x": return box(a0, a1, r0, r1, s0, s1)
+        if axis == "y": return box(r0, r1, a0, a1, s0, s1)
+        return box(r0, r1, s0, s1, a0, a1)
+    body = bx(lo[0], hi[0], lo[1], hi[1])
+    g = slot / 2
+    grooves = [bx(c1 - g, c1 + g, hi[1] - depth, hi[1] + 1), bx(c1 - g, c1 + g, lo[1] - 1, lo[1] + depth),
+               bx(hi[0] - depth, hi[0] + 1, c2 - g, c2 + g), bx(lo[0] - 1, lo[0] + depth, c2 - g, c2 + g)]
+    return body - union(grooves)
+
+
+def frame(P, post_len=120.0):
+    """Top frame: the Y profiles run over the four posts (full outer length), the X profiles butt
+    between them; a printed corner joint (cad/gantry.build_corner_joint) on every corner."""
     S, Fy = P.Y_RAIL_SPACING, P.FRAME_Y_INNER
     y0 = (Fy - P.Y_RAIL_LEN) / 2
     parts = {
-        "frame_Y_left": box(-10, 10, 0, Fy, -20, 0),
-        "frame_Y_right": box(S - 10, S + 10, 0, Fy, -20, 0),
-        "frame_X_front": box(-10, S + 10, -20, 0, -20, 0),
-        "frame_X_back": box(-10, S + 10, Fy, Fy + 20, -20, 0),
+        "frame_Y_left": profile2020("y", -20, Fy + 20, 0, -10),
+        "frame_Y_right": profile2020("y", -20, Fy + 20, S, -10),
+        "frame_X_front": profile2020("x", 10, S - 10, -10, -10),
+        "frame_X_back": profile2020("x", 10, S - 10, Fy + 10, -10),
         "rail_Y_left": box(-6, 6, y0, y0 + P.Y_RAIL_LEN, 0, P.MGN12_RAIL_H),
         "rail_Y_right": box(S - 6, S + 6, y0, y0 + P.Y_RAIL_LEN, 0, P.MGN12_RAIL_H),
     }
+    posts = []
+    for (x, y) in ((0, -10), (S, -10), (0, Fy + 10), (S, Fy + 10)):
+        posts.append(profile2020("z", -20 - post_len, -20, x, y))
+    parts["frame_posts"] = union(posts)
+    J = build_corner_joint(P)
+    joints = [J.translate([-10, -20, -20]),
+              J.mirror([1, 0, 0]).translate([S + 10, -20, -20]),
+              J.mirror([0, 1, 0]).translate([-10, Fy + 20, -20]),
+              J.mirror([1, 0, 0]).mirror([0, 1, 0]).translate([S + 10, Fy + 20, -20])]
+    parts["corner_joints"] = union(joints)
     return parts, (y0, y0 + P.Y_RAIL_LEN)
 
 

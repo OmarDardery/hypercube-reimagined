@@ -1,6 +1,21 @@
 {
  "xy_joiner_left": {
-  "volume_cm3": 92.7,
+  "volume_cm3": 106.2,
+  "watertight": true,
+  "genus": 15,
+  "extents_installed": [
+   58.5,
+   52.7,
+   61.2
+  ],
+  "extents_print": [
+   58.5,
+   52.7,
+   61.2
+  ]
+ },
+ "xy_joiner_right": {
+  "volume_cm3": 106.1,
   "watertight": true,
   "genus": 16,
   "extents_installed": [
@@ -14,23 +29,8 @@
    61.2
   ]
  },
- "xy_joiner_right": {
-  "volume_cm3": 92.0,
-  "watertight": true,
-  "genus": 18,
-  "extents_installed": [
-   58.5,
-   52.7,
-   61.2
-  ],
-  "extents_print": [
-   58.5,
-   52.7,
-   61.2
-  ]
- },
  "hotend_carrier_mgn9h": {
-  "volume_cm3": 52.1,
+  "volume_cm3": 54.2,
   "watertight": true,
   "genus": 12,
   "extents_installed": [
@@ -59,13 +59,28 @@
    6.0
   ]
  },
+ "frame_corner_joint_x4": {
+  "volume_cm3": 29.0,
+  "watertight": true,
+  "genus": 10,
+  "extents_installed": [
+   65.0,
+   65.0,
+   60.0
+  ],
+  "extents_print": [
+   65.0,
+   60.0,
+   65.0
+  ]
+ },
  "params": {
   "ROD_DZ": 40.0,
   "ROD_DX": 0.0,
   "LEFT_A_LEVEL": "upper",
-  "Y_RAIL_SPACING": 440.0,
-  "FRAME_Y_INNER": 440.0,
-  "Y_RAIL_LEN": 400.0,
+  "Y_RAIL_SPACING": 448.0,
+  "FRAME_Y_INNER": 400.0,
+  "Y_RAIL_LEN": 350.0,
   "LEVEL_HALF_GAP": 7.25,
   "IDLER_A": [
    21.0,

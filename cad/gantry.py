@@ -6,7 +6,9 @@ Layout
   * X : one 2020 beam sitting ON TOP of the two joiners (above both belt levels),
         offset 15 mm toward the back; MGN9 rail mounted sideways on its FRONT face.
   * The hot-end carrier bolts to the front of the MGN9H; both belt levels pass
-    under the beam's front edge straight into the carrier's toothed clamps.
+    under the beam's front edge straight into the carrier's screw-tightened clamps.
+  * Frame top: the Y 2020s run over four posts, the X 2020s butt between them, and a
+    printed corner joint (build_corner_joint) wraps the outer faces of every corner.
 
 Coordinate system (installed, "gantry frame"), millimetres:
   X  : along the X beam, + = toward the bed centre (inboard) for the LEFT joiner
@@ -37,9 +39,9 @@ class Params:
     ROD_DZ: float = 40.0          # old Y-rod centre height above the 2020 top face
     ROD_DX: float = 0.0           # old Y-rod centre offset from 2020 centreline (+ = inboard)
     LEFT_A_LEVEL: str = "upper"   # belt level of the LEFT joiner's front/outer idler (A)
-    Y_RAIL_SPACING: float = 440.0 # left-to-right Y rail centre distance (HC300 estimate)
-    FRAME_Y_INNER: float = 440.0  # inside length of the frame along Y (sim only)
-    Y_RAIL_LEN: float = 400.0     # MGN12 rail length (sim only)
+    Y_RAIL_SPACING: float = 448.0 # Y-rail (= Y 2020) centre distance; X travel = this - 147.1 -> 300.9 mm
+    FRAME_Y_INNER: float = 400.0  # inside length between the front and back X 2020s
+    Y_RAIL_LEN: float = 350.0     # MGN12 rail length (centred on the Y 2020)
 
     # --- original belt geometry (from the original joiner, do not change) ---
     LEVEL_HALF_GAP: float = 7.25
@@ -108,6 +110,30 @@ def xcyl(y, z, x0, x1, d, seg=SEG):
     return c.rotate([0, 90, 0]).translate([x0, y, z])
 
 
+def teardrop_y(x, z, y0, y1, d, seg=SEG):
+    """Hole along Y with a 45-degree pointed top, so it prints without support (printed Z-up)."""
+    r = d / 2
+    tip = m3.Manifold.cylinder(y1 - y0, 0.01, 0.01, 8).rotate([-90, 0, 0]).translate([x, y0, z + r * 2 ** 0.5])
+    return m3.Manifold.batch_hull([ycyl(x, z, y0, y1, d, seg), tip])
+
+
+def teardrop_x(y, z, x0, x1, d, up=(0, 0, 1), seg=SEG):
+    """Hole along X with its point toward `up` (a unit vector in the Y-Z plane)."""
+    r = d / 2
+    tip = m3.Manifold.cylinder(x1 - x0, 0.01, 0.01, 8).rotate([0, 90, 0]).translate(
+        [x0, y + up[1] * r * 2 ** 0.5, z + up[2] * r * 2 ** 0.5])
+    return m3.Manifold.batch_hull([xcyl(y, z, x0, x1, d, seg), tip])
+
+
+def prism_x(x0, x1, pts_yz):
+    """Prism along X with the given (y, z) cross-section."""
+    return m3.Manifold.hull_points([[x, y, z] for x in (x0, x1) for (y, z) in pts_yz])
+
+
+def prism_y(y0, y1, pts_xz):
+    return m3.Manifold.hull_points([[x, y, z] for y in (y0, y1) for (x, z) in pts_xz])
+
+
 def union(parts):
     return m3.Manifold.batch_boolean(parts, m3.OpType.Add)
 
@@ -167,27 +193,16 @@ def build_joiner(P, side="left"):
     yback = by1 + P.CHEEK_T                                   # back face of the rear cheek
     ftop = P.BEAM_TOP - 4.0                                   # cheek top (below beam top edge radius)
 
-    def pillar_free(i):
-        # solid beside the idler where no belt runs on that level
-        if i["name"] == "A":   # wraps outboard->back, so the back side is free
-            return box(i["x"] - 10, i["x"] + 7, i["y"] + 11, ymid, 0, 1)
-        else:                  # wraps outboard->front, so the front side (below depart line) is free
-            return box(i["x"] - 9, xmax, -ymid, i["y"] - 11, 0, 1)
-
-    def band(i, z0, z1):
-        pf = pillar_free(i)
-        bb = pf.bounding_box()
-        pf = box(bb[0], bb[3], bb[1], bb[4], z0, z1)
-        pout = box(xo, 10.5, -ymid, ymid, z0, z1)   # outboard pillar
-        return pout + pf
-
     solid = union([
         box(xo, -xo, yF, yR, car_top, base_top),                       # carriage pad
         box(xo, -xo, yF, yR, base_top, zl0),                           # deck over carriage
-        box(14.0, xmax, -ymid, ymid, zl0 - 8.0, zl0),                  # floor of the lower idler
-        band(lo, zl0, zl1),                                            # lower belt level pillars
+        box(14.0, xmax, -ymid, ymid, car_top, zl0),                    # floor of the lower idler, down to the bed
+                                                                       # (inside the original joiner's envelope)
+        box(xo, xmax, -ymid, ymid, zl0, zl1),                          # lower belt level: solid, voids cut below
         box(xo, xmax, -ymid, ymid, zl1, zu0),                          # middle plate
-        box(xo, xmax, -ymid, ymid, zu0, zu1),                          # upper level: full, belts cut out below
+        box(xo, xmax, -ymid, ymid, zu0, zu1),                          # upper belt level: solid, voids cut below
+        # 45-degree chamfer under the rear of the beam seat (prints without support)
+        prism_x(xo, xmax, [(ymid - 0.01, zu1 - (yback - ymid)), (ymid - 0.01, zu1 + 0.01), (yback, zu1 + 0.01)]),
         box(xo, xmax, -ymid, yback, zu1, seat_top),                    # roof = beam seat
         box(xo, xmax, by0 - P.CHEEK_T, by0, seat_top - 0.01, ftop),    # front cheek
         box(xo, xmax, by1, yback, seat_top - 0.01, ftop),              # rear cheek
@@ -200,16 +215,30 @@ def build_joiner(P, side="left"):
         cut.append(zcyl(i["x"], i["y"], z0, z1, P.POCKET_D))
         if i["x"] + R > xmax:   # pocket breaks through the inboard face: open it fully (no skin)
             cut.append(box(i["x"], xmax + 1, i["y"] - R, i["y"] + R, z0, z1))
-        # idler insertion window, also clears the incoming belt run
-        if i["approach"] == "front":
+        # idler insertion window
+        breaks_out = i["x"] + R > xmax
+        if breaks_out:
+            pass   # slides in from the inboard face through the breakout (opening 20.5 mm > idler 18 mm);
+                   # the ceiling above then bridges front-to-back between two walls (no support needed)
+        elif i["approach"] == "front":
             cut.append(box(i["x"] - R, i["x"] + R, -200, i["y"], z0, z1))
         else:
             cut.append(box(i["x"] - R, i["x"] + R, i["y"], 200, z0, z1))
+        # incoming belt run (straight strand, tangent on the outboard side)
+        ya_, yb_a = (-200, i["y"]) if i["approach"] == "front" else (i["y"], 200)
+        cut.append(box(i["strand_x"] - 1.5, i["strand_x"] + 1.5, ya_, yb_a, i["z"] - 3.75, i["z"] + 3.75))
+        # merge that corridor into the pocket (no knife-edge cusp where it runs almost tangent)
+        yc0, yc1 = (i["y"] - R, i["y"]) if i["approach"] == "front" else (i["y"], i["y"] + R)
+        cut.append(box(i["strand_x"] - 1.5, i["x"], yc0, yc1, z0, z1))
         # outgoing X run toward the carrier
         cut.append(box(i["x"], 400, i["depart_y"] - 1.5, i["depart_y"] + 1.5, i["z"] - 3.75, i["z"] + 3.75))
         # blend pocket into that run (no knife-edge where the circle meets the slot)
         ya, yb_ = sorted([i["y"], i["depart_y"] + (1.5 if i["depart_y"] > i["y"] else -1.5)])
         cut.append(box(i["x"], i["x"] + R, ya, yb_, i["z"] - 3.75, i["z"] + 3.75))
+    # column above/below the stationary back corner pulley stays free (seat bridges over the gap)
+    gx0 = P.pass_x - 4.1                                    # pulley (centre pass_x + r, dia 18) + 1.5 mm
+    gx1 = P.pass_x + 2 * P.IDLER_PITCH_R + 4.1
+    cut.append(box(gx0, gx1, ymid, yback + 1, zu1 - (yback - ymid) - 1, zu1))
     # straight-through belt run on idler B's level (this side's other strand)
     zb = B["z"]
     cut.append(box(P.pass_x - 1.6, P.pass_x + 1.6, -200, 200, zb - 3.75, zb + 3.75))
@@ -238,7 +267,7 @@ def build_joiner(P, side="left"):
     # beam cheek bolts: M5 into T-nuts in the beam's front & back slots
     zc = P.beam_bot + 10
     for x in (P.BEAM_END_X + 8.0, xmax - 8.0):   # both T-nuts well inside the beam end
-        cut.append(ycyl(x, zc, by0 - 10, yback + 10, 5.5))
+        cut.append(teardrop_y(x, zc, by0 - 10, yback + 10, 5.5))
     # lightening: hollow the outboard pillar between the screw shafts
     cut.append(box(-6.0, 6.0, -5.0, 5.0, base_top + 3, zl1 - 1.5))
 
@@ -305,6 +334,15 @@ def build_carrier(P, orig):
         box(-17.47, 19.47, -7.47, y_front + 0.53, zL - 3.97, top - 0.03),       # tie module to block
         box(-hw, hw, cf - plate_t, cf, top - 9.0, P.BEAM_TOP + 3.0),           # plate bolted to the MGN9H face,
                                                                                 # overlapping the clamp block by 9 mm
+        # 45-degree chamfers so nothing new needs support when printed upright
+        prism_x(-hw, hw, [(y_front + 0.01, top - 9.0 - (y_front - (cf - plate_t))),
+                          (y_front + 0.01, top - 8.99), (cf - plate_t, top - 8.99)]),   # under the plate's front ledge
+        prism_y(y_front, 0.0, [(18.94, cz0 - 0.5 - (hw - 18.95)), (18.94, cz0 - 0.49), (hw, cz0 - 0.49)]),     # under right jaw
+        prism_y(y_front, 0.0, [(-18.62, cz0 - 0.5 - (hw - 18.63)), (-18.62, cz0 - 0.49), (-hw, cz0 - 0.49)]),  # under left jaw
+        # side plate continued down to the bed + 45-degree gusset under the probe-ring arm
+        # (stops 1 mm short of the probe bore, keeps clear of the hot end)
+        box(-35.0, -18.6, -8.0, -3.5, zrod - 9.25, zrod + 4.0),
+        prism_x(-33.5, -15.0, [(-8.0, zrod - 9.25), (-17.5, zrod + 0.25), (-17.5, zrod + 0.95), (-8.0, zrod + 0.95)]),
     ])
     # room for the removable caps (0.25 mm clearance except on the clamping face y = 0)
     for sgn in (-1, 1):
@@ -340,8 +378,8 @@ def build_carrier(P, orig):
     for sx_ in (-1, 1):
         for sy in (-1, 1):
             x, z = sx_ * P.MGN9H_C / 2, rzc + sy * P.MGN9H_B / 2
-            cut.append(ycyl(x, z, cf - plate_t - 1, cf + 1, 3.4))     # M3x6 from the front
-            cut.append(ycyl(x, z, cf - plate_t - 1, cf - 3.0, 6.2))   # head recess: 3 mm left under it
+            cut.append(teardrop_y(x, z, cf - plate_t - 1, cf + 1, 3.4))     # M3x6 from the front
+            cut.append(teardrop_y(x, z, cf - plate_t - 1, cf - 3.0, 6.2))   # head recess: 3 mm left under it
     C = body - union(cut) + union(ridges)
     caps = {}
     for s in (-1, 1):
@@ -353,3 +391,43 @@ def build_carrier(P, orig):
             cap = cap + union(cap_ridges[s])
         caps["left" if s < 0 else "right"] = cap
     return C, dict(belts=belts, top=top, hotend_axis=(0.0, -23.15), caps=caps, clamp_screws=screws)
+
+
+# --------------------------------------------------------------------------- frame corner joint
+def _key(p0, p1, wdir, ndir, root_w=5.6, depth=1.6):
+    """Tapered key: root rectangle on the plate face from p0 to p1 (slot centre line),
+    width root_w across `wdir`, protruding `depth` along `ndir`; all sides 45 deg."""
+    p0, p1 = np.asarray(p0, float), np.asarray(p1, float)
+    w, n = np.asarray(wdir, float), np.asarray(ndir, float)
+    u = (p1 - p0) / np.linalg.norm(p1 - p0)
+    pts = []
+    for (q0, q1, hw_, off) in ((p0, p1, root_w / 2, 0.0), (p0 + u * depth, p1 - u * depth, root_w / 2 - depth, depth)):
+        for q in (q0, q1):
+            for sgn in (-1, 1):
+                pts.append(list(q + w * sgn * hw_ + n * off))
+    # tiny back-off into the plate so the union is solid
+    pts += [list(q - n * 0.2 + w * sgn * root_w / 2) for q in (p0, p1) for sgn in (-1, 1)]
+    return m3.Manifold.hull_points(pts)
+
+
+def build_corner_joint(P=None, T=5.0, arm=60.0, leg=40.0):
+    """3-way 2020 frame corner: vertical post, with the Y profile running over the post and the
+    X profile butting against the Y profile's side.  Local coords: post at x,y in [0,20], z<0;
+    Y profile x[0,20] z[0,20] along +y; X profile y[0,20] z[0,20] along +x.  The bracket wraps the
+    two OUTER faces (x=0 and y=0).  It is mirror-symmetric about x=y, so one part fits all corners."""
+    outline = [(-T, -leg), (20.0, -leg), (arm, 0.0), (arm, 20.0), (-T, 20.0)]
+    front = m3.Manifold.hull_points([[u, y, v] for (u, v) in outline for y in (-T, 0.0)])   # plate on y=0 face
+    side = m3.Manifold.hull_points([[x, u, v] for (u, v) in outline for x in (-T, 0.0)])    # plate on x=0 face
+    J = front + side
+    keys = [
+        _key((20.6, 0.0, 10.0), (arm - 1.0, 0.0, 10.0), (0, 0, 1), (0, 1, 0)),     # X-profile slot (front plate)
+        _key((10.0, 0.0, -leg + 1.0), (10.0, 0.0, -0.6), (1, 0, 0), (0, 1, 0)),    # post slot (front plate)
+        _key((0.0, 20.6, 10.0), (0.0, arm - 1.0, 10.0), (0, 0, 1), (1, 0, 0)),     # Y-profile slot (side plate)
+        _key((0.0, 10.0, -leg + 1.0), (0.0, 10.0, -0.6), (0, 1, 0), (1, 0, 0)),    # post slot (side plate)
+    ]
+    J = J + union(keys)
+    holes = []
+    for (a, z) in ((10.0, 10.0), (30.0, 10.0), (50.0, 10.0), (10.0, -10.0), (10.0, -30.0)):
+        holes.append(ycyl(a, z, -T - 1, 2.0, 5.5))                                  # front plate: vertical when printed
+        holes.append(teardrop_x(a, z, -T - 1, 2.0, 5.5, up=(0, 1, 0)))              # side plate: point up when printed
+    return J - union(holes)
