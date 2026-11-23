@@ -5,7 +5,7 @@ import json, math, os, sys
 import numpy as np
 import manifold3d as m3
 sys.path.insert(0, os.path.dirname(__file__))
-from gantry import (Params, box, zcyl, ycyl, union, build_corner_joint, to_trimesh, mirror_x, build_joiner,
+from gantry import (Params, box, zcyl, ycyl, union, build_pair_joint, place_pair_joint, to_trimesh, mirror_x, build_joiner,
                     build_carrier, load_original_carrier, idlers)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,29 +30,32 @@ def profile2020(axis, a0, a1, c1, c2, slot=6.2, depth=6.0):
     return body - union(grooves)
 
 
-def frame(P, post_len=120.0):
-    """Top frame: the Y profiles run over the four posts (full outer length), the X profiles butt
-    between them; a printed corner joint (cad/gantry.build_corner_joint) on every corner."""
+def frame(P, post_len=140.0):
+    """Top frame: a PAIR of parallel 2020s per side (A outboard carries the MGN12 rail on its inner
+    face, B inboard sits under the corner pulleys), four vertical posts, and one printed pair joint
+    (cad/gantry.build_pair_joint) per post."""
     S, Fy = P.Y_RAIL_SPACING, P.FRAME_Y_INNER
     y0 = (Fy - P.Y_RAIL_LEN) / 2
+    zc = P.Y_RAIL_ZC
     parts = {
-        "frame_Y_left": profile2020("y", -20, Fy + 20, 0, -10),
-        "frame_Y_right": profile2020("y", -20, Fy + 20, S, -10),
-        "frame_X_front": profile2020("x", 10, S - 10, -10, -10),
-        "frame_X_back": profile2020("x", 10, S - 10, Fy + 10, -10),
-        "rail_Y_left": box(-6, 6, y0, y0 + P.Y_RAIL_LEN, 0, P.MGN12_RAIL_H),
-        "rail_Y_right": box(S - 6, S + 6, y0, y0 + P.Y_RAIL_LEN, 0, P.MGN12_RAIL_H),
+        "frame_Y_A_left": profile2020("y", -20, Fy + 20, P.A_XC, -10),
+        "frame_Y_B_left": profile2020("y", -20, Fy + 20, P.B_XC, -10),
+        "frame_Y_B_right": profile2020("y", -20, Fy + 20, S - P.B_XC, -10),
+        "frame_Y_A_right": profile2020("y", -20, Fy + 20, S - P.A_XC, -10),
+        # MGN12 rails lie on the INNER faces of the A profiles (width 12 along Z, height 8 along X)
+        "rail_Y_left": box(P.A_X1, P.A_X1 + P.MGN12_RAIL_H, y0, y0 + P.Y_RAIL_LEN, zc - 6, zc + 6),
+        "rail_Y_right": box(S - P.A_X1 - P.MGN12_RAIL_H, S - P.A_X1, y0, y0 + P.Y_RAIL_LEN, zc - 6, zc + 6),
     }
-    posts = []
-    for (x, y) in ((0, -10), (S, -10), (0, Fy + 10), (S, Fy + 10)):
-        posts.append(profile2020("z", -20 - post_len, -20, x, y))
+    J = build_pair_joint(P)
+    posts, joints = [], []
+    for right in (False, True):
+        for back in (False, True):
+            xc = S - P.PAIR_XC if right else P.PAIR_XC
+            yc = (Fy + 20.0 - P.JOINT_L / 2) if back else (-20.0 + P.JOINT_L / 2)
+            posts.append(profile2020("z", -20.0 - 6.0 - post_len, -20.0 - 6.0, xc, yc))
+            joints.append(place_pair_joint(P, J, right, back))
     parts["frame_posts"] = union(posts)
-    J = build_corner_joint(P)
-    joints = [J.translate([-10, -20, -20]),
-              J.mirror([1, 0, 0]).translate([S + 10, -20, -20]),
-              J.mirror([0, 1, 0]).translate([-10, Fy + 20, -20]),
-              J.mirror([1, 0, 0]).mirror([0, 1, 0]).translate([S + 10, Fy + 20, -20])]
-    parts["corner_joints"] = union(joints)
+    parts["pair_joints"] = union(joints)
     return parts, (y0, y0 + P.Y_RAIL_LEN)
 
 
@@ -200,7 +203,9 @@ class Gantry:
         self.static, self.rail_y = frame(P)
         self.cd = corner_devices(P)
         S = P.Y_RAIL_SPACING
-        self.mgn12h = box(-P.MGN12H_W / 2, P.MGN12H_W / 2, -P.MGN12H_L / 2, P.MGN12H_L / 2, P.MGN12_H1, P.MGN12_H)
+        xo = -P.JOINER_HALF_W      # carriage rides on A's inner face, its mounting face (xo) looks inboard
+        self.mgn12h = box(xo - (P.MGN12_H - P.MGN12_H1), xo, -P.MGN12H_L / 2, P.MGN12H_L / 2,
+                          P.Y_RAIL_ZC - P.MGN12H_W / 2, P.Y_RAIL_ZC + P.MGN12H_W / 2)
         self.beam = box(P.BEAM_END_X, S - P.BEAM_END_X, P.BEAM_Y - 10, P.BEAM_Y + 10, P.beam_bot, P.BEAM_TOP)
         self.rail9_x = ((S - P.X_RAIL_LEN) / 2, (S + P.X_RAIL_LEN) / 2)
         bf = P.BEAM_Y - 10.0                      # beam front face; MGN9 rail lies on it sideways
@@ -227,7 +232,7 @@ class Gantry:
             "joiner_left": T(self.JL, 0, Yg),
             "joiner_right": T(self.JR, S, Yg),
             "mgn12h_left": T(self.mgn12h, 0, Yg),
-            "mgn12h_right": T(self.mgn12h, S, Yg),
+            "mgn12h_right": T(mirror_x(self.mgn12h), S, Yg),
             "beam_2020": T(self.beam, 0, Yg),
             "rail_X_mgn9": T(self.rail9, 0, Yg),
             "mgn9h": T(self.mgn9h, Xc, Yg),
@@ -258,6 +263,7 @@ class Gantry:
 # pairs that are SUPPOSED to touch / interpenetrate in the simplified models
 ALLOWED = {
     frozenset(["mgn12h_left", "rail_Y_left"]), frozenset(["mgn12h_right", "rail_Y_right"]),
+    frozenset(["mgn12h_left", "joiner_left"]), frozenset(["mgn12h_right", "joiner_right"]),   # bolted face to face
     frozenset(["mgn9h", "rail_X_mgn9"]),
     frozenset(["probe", "carrier"]),          # probe passes through its ring
     frozenset(["hotend", "carrier"]),         # groove mount

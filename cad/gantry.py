@@ -2,26 +2,28 @@
 Hypercube 300 V2 -> linear-rail XY conversion (parametric).
 
 Layout
-  * Y : MGN12 rail on the top face of each Y 2020, MGN12H under each XY joiner.
-  * X : one 2020 beam sitting ON TOP of the two joiners (above both belt levels),
-        offset 15 mm toward the back; MGN9 rail mounted sideways on its FRONT face.
-  * The hot-end carrier bolts to the front of the MGN9H; both belt levels pass
-    under the beam's front edge straight into the carrier's screw-tightened clamps.
-  * Frame top: the Y 2020s run over four posts, the X 2020s butt between them, and a
-    printed corner joint (build_corner_joint) wraps the outer faces of every corner.
+  * Y : a PAIR of parallel 2020s per side (A outboard, B inboard) with a gap between them.
+        The MGN12 rail sits on the inner face of A, carriage facing inboard; the XY joiner
+        bolts to the carriage's inboard face and lives in the gap, rising above the profiles.
+  * X : one 2020 beam sitting ON TOP of the two joiners (above both belt levels), offset
+        15 mm toward the back; MGN9 rail mounted sideways on its FRONT face.
+  * The hot-end carrier bolts to the front of the MGN9H; both belt levels pass under the
+    beam's front edge straight into the carrier's screw-tightened clamps.
+  * Each end of a pair sits on one vertical 2020 post through a printed pair joint
+    (build_pair_joint): a plate under both profiles with a collar around the post.
 
 Coordinate system (installed, "gantry frame"), millimetres:
-  X  : along the X beam, + = toward the bed centre (inboard) for the LEFT joiner
-  Y  : along the Y rails, - = front of printer, + = back
-  Z  : up; Z = 0 is the TOP face of the 2020 that carries the MGN12 Y rail
-Left Y rail centre is X = 0, right Y rail centre is X = P.Y_RAIL_SPACING.
+  X  : across; the LEFT joiner's carriage-face plane is X = -16.5, its belt datum is X = 0
+  Y  : along the rails, - = front of printer, + = back
+  Z  : up; Z = 0 is the TOP face of all four Y 2020s
+Right side is the mirror image about X = Y_RAIL_SPACING / 2.
 
 All belt-path geometry is copied from the original XY_Joiner_10mm-X_LM8LUU:
   idler A : 21 mm inboard of the old Y-rod axis, 7 mm toward the front
   idler B : 34 mm inboard, 7 mm toward the back
   the two belt levels sit +-7.25 mm around the old Y-rod axis height
   one belt run passes straight through each joiner 14.63 mm inboard.
-Keeping those points fixed relative to the frame means the motors and corner
+Keeping those points fixed relative to the corner pulleys means the motors and corner
 pulleys do not move.
 """
 from dataclasses import dataclass
@@ -39,9 +41,10 @@ class Params:
     ROD_DZ: float = 40.0          # old Y-rod centre height above the 2020 top face
     ROD_DX: float = 0.0           # old Y-rod centre offset from 2020 centreline (+ = inboard)
     LEFT_A_LEVEL: str = "upper"   # belt level of the LEFT joiner's front/outer idler (A)
-    Y_RAIL_SPACING: float = 448.0 # Y-rail (= Y 2020) centre distance; X travel = this - 147.1 -> 300.9 mm
+    Y_RAIL_SPACING: float = 448.0 # distance between the two belt datums (X = 0 and X = this); X travel = this - 147.1
     FRAME_Y_INNER: float = 400.0  # inside length between the front and back X 2020s
     Y_RAIL_LEN: float = 350.0     # MGN12 rail length (centred on the Y 2020)
+    Y_RAIL_ZC: float = -10.0      # rail centre height on the face of profile A (centred on the 20 mm face)
 
     # --- original belt geometry (from the original joiner, do not change) ---
     LEVEL_HALF_GAP: float = 7.25
@@ -66,6 +69,9 @@ class Params:
     SEAT_T: float = 7.0           # joiner roof / beam seat thickness above the upper idler pocket
     JOINER_HALF_W: float = 16.5   # joiner body half-width over the MGN12H (carriage is 13.5)
     CHEEK_T: float = 5.0          # joiner cheeks clamping the beam front/back faces
+    PAD_T: float = 5.0            # joiner mounting plate on the carriage (M3x8 into the carriage)
+    COL_Z0: float = 3.5           # underside of the joiner column: 3.5 mm above the inboard profile B
+    JOINT_L: float = 42.0         # pair joint length along the profiles
     X_RAIL_LEN: float = 350.0     # MGN9 rail length, centred on the beam
 
     # --- carrier ---
@@ -89,6 +95,25 @@ class Params:
     def x_carriage_face(self): return self.BEAM_Y - 10.0 - self.MGN9_H   # Y of the MGN9H front (mounting) face
     @property
     def pass_x(self): return self.IDLER_A[0] + self.ROD_DX - self.IDLER_PITCH_R
+    # ---- the profile pair (all tops at Z = 0, all 20 x 20) ----
+    @property
+    def A_X1(self): return -self.JOINER_HALF_W - self.MGN12_H        # A's inner face = rail base
+    @property
+    def A_X0(self): return self.A_X1 - 20.0
+    @property
+    def A_XC(self): return self.A_X0 + 10.0
+    @property
+    def B_X0(self): return self.IDLER_A[0] + self.ROD_DX - 10.0       # B centred under the corner pulleys
+    @property
+    def B_X1(self): return self.B_X0 + 20.0
+    @property
+    def B_XC(self): return self.B_X0 + 10.0
+    @property
+    def PAIR_XC(self): return (self.A_X0 + self.B_X1) / 2.0
+    @property
+    def PAIR_W(self): return self.B_X1 - self.A_X0
+    @property
+    def ACCESS_GAP(self): return self.B_X0 - (-self.JOINER_HALF_W + self.PAD_T)   # free room in front of the carriage screws
 
 
 # --------------------------------------------------------------------------- helpers
@@ -110,11 +135,20 @@ def xcyl(y, z, x0, x1, d, seg=SEG):
     return c.rotate([0, 90, 0]).translate([x0, y, z])
 
 
-def teardrop_y(x, z, y0, y1, d, seg=SEG):
-    """Hole along Y with a 45-degree pointed top, so it prints without support (printed Z-up)."""
+def teardrop_y(x, z, y0, y1, d, up=(0.0, 1.0), seg=SEG):
+    """Hole along Y with a 45-degree pointed side toward `up` (a vector in the X-Z plane)."""
     r = d / 2
-    tip = m3.Manifold.cylinder(y1 - y0, 0.01, 0.01, 8).rotate([-90, 0, 0]).translate([x, y0, z + r * 2 ** 0.5])
+    tip = m3.Manifold.cylinder(y1 - y0, 0.01, 0.01, 8).rotate([-90, 0, 0]).translate(
+        [x + up[0] * r * 2 ** 0.5, y0, z + up[1] * r * 2 ** 0.5])
     return m3.Manifold.batch_hull([ycyl(x, z, y0, y1, d, seg), tip])
+
+
+def teardrop_z(x, y, z0, z1, d, up=(1.0, 0.0), seg=SEG):
+    """Hole along Z with a 45-degree pointed side toward `up` (a vector in the X-Y plane)."""
+    r = d / 2
+    tip = m3.Manifold.cylinder(z1 - z0, 0.01, 0.01, 8).translate(
+        [x + up[0] * r * 2 ** 0.5, y + up[1] * r * 2 ** 0.5, z0])
+    return m3.Manifold.batch_hull([zcyl(x, y, z0, z1, d, seg), tip])
 
 
 def teardrop_x(y, z, x0, x1, d, up=(0, 0, 1), seg=SEG):
@@ -172,37 +206,49 @@ def idlers(P, side):
 
 # --------------------------------------------------------------------------- joiner
 def build_joiner(P, side="left"):
-    """XY joiner in LEFT-local installed coords (rail centre X=0, joiner centre Y=0).
-    For side='right' the idler levels are swapped; caller mirrors it."""
+    """XY joiner in LEFT-local installed coords.  For side='right' the idler levels are swapped;
+    the caller mirrors it.
+
+    It bolts to the INBOARD face of an MGN12H that rides on the inner face of profile A.  A 5 mm
+    plate runs down the carriage face, the column above it clears the inboard profile B by 3.5 mm,
+    and everything above is the old belt / idler / beam-seat stack.
+
+    Printed on its outboard (carriage-mounting) face, so every slice along the print is contained
+    in the one below it: no overhangs except round holes, which are teardrops pointing +X.
+    """
     I = idlers(P, side)
     A, B = I
     up = A if A["z"] > B["z"] else B
     lo = B if up is A else A
     hb = P.POCKET_H / 2
-    car_top = P.MGN12_H
-    base_top = car_top + 5.0
+    zc = P.Y_RAIL_ZC
+    cz0 = zc - P.MGN12H_W / 2                       # bottom of the carriage and of the pad
+    col0 = P.COL_Z0
     zl0, zl1 = lo["z"] - hb, lo["z"] + hb
     zu0, zu1 = up["z"] - hb, up["z"] + hb
     yF, yR = -P.MGN12H_L / 2, P.MGN12H_L / 2
-    xo = -P.JOINER_HALF_W
+    xo = -P.JOINER_HALF_W                           # outboard face = carriage mounting face
+    pad = P.PAD_T
     by0, by1 = P.BEAM_Y - 10, P.BEAM_Y + 10
     xmax = max(A["x"], B["x"]) + 8.0   # like the original: outer pocket breaks through the inboard face
     ymid = 19.5
-
     seat_top = P.beam_bot
-    yback = by1 + P.CHEEK_T                                   # back face of the rear cheek
-    ftop = P.BEAM_TOP - 4.0                                   # cheek top (below beam top edge radius)
+    yback = by1 + P.CHEEK_T                         # back face of the rear cheek
+    ftop = P.BEAM_TOP - 4.0                         # cheek top (below beam top edge radius)
+    R = P.POCKET_D / 2
+
+    def zhole(x, y, z0, z1, d):                     # vertical hole = horizontal when printed: teardrop, tip up (+X)
+        return teardrop_z(x, y, z0, z1, d, up=(1.0, 0.0))
 
     solid = union([
-        box(xo, -xo, yF, yR, car_top, base_top),                       # carriage pad
-        box(xo, -xo, yF, yR, base_top, zl0),                           # deck over carriage
-        box(14.0, xmax, -ymid, ymid, car_top, zl0),                    # floor of the lower idler, down to the bed
-                                                                       # (inside the original joiner's envelope)
+        box(xo, xo + pad, yF, yR, cz0, zl0),                           # mounting plate on the carriage, up into the column
+        box(xo, -xo, yF, yR, col0, zl0),                               # column (clears profile B by col0)
+        box(14.0, xmax, -ymid, ymid, col0, zl0),                       # pillar under the lower idler
+        box(xo + pad - 0.01, xo + pad + 8.0, yR - 3.0, yR, cz0, col0 + 0.01),   # ribs stiffening the plate
+        box(xo + pad - 0.01, xo + pad + 8.0, yF, yF + 3.0, cz0, col0 + 0.01),
         box(xo, xmax, -ymid, ymid, zl0, zl1),                          # lower belt level: solid, voids cut below
         box(xo, xmax, -ymid, ymid, zl1, zu0),                          # middle plate
         box(xo, xmax, -ymid, ymid, zu0, zu1),                          # upper belt level: solid, voids cut below
-        # 45-degree chamfer under the rear of the beam seat (prints without support)
-        prism_x(xo, xmax, [(ymid - 0.01, zu1 - (yback - ymid)), (ymid - 0.01, zu1 + 0.01), (yback, zu1 + 0.01)]),
         box(xo, xmax, -ymid, yback, zu1, seat_top),                    # roof = beam seat
         box(xo, xmax, by0 - P.CHEEK_T, by0, seat_top - 0.01, ftop),    # front cheek
         box(xo, xmax, by1, yback, seat_top - 0.01, ftop),              # rear cheek
@@ -211,19 +257,18 @@ def build_joiner(P, side="left"):
     cut = []
     for i in I:
         z0, z1 = i["z"] - hb, i["z"] + hb
-        R = P.POCKET_D / 2
-        cut.append(zcyl(i["x"], i["y"], z0, z1, P.POCKET_D))
-        if i["x"] + R > xmax:   # pocket breaks through the inboard face: open it fully (no skin)
-            cut.append(box(i["x"], xmax + 1, i["y"] - R, i["y"] + R, z0, z1))
-        # idler insertion window
         breaks_out = i["x"] + R > xmax
-        if breaks_out:
-            pass   # slides in from the inboard face through the breakout (opening 20.5 mm > idler 18 mm);
-                   # the ceiling above then bridges front-to-back between two walls (no support needed)
-        elif i["approach"] == "front":
-            cut.append(box(i["x"] - R, i["x"] + R, -200, i["y"], z0, z1))
+        if breaks_out:     # pocket breaks through the inboard face: open it fully (no skin)
+            cut.append(zcyl(i["x"], i["y"], z0, z1, P.POCKET_D))
+            cut.append(box(i["x"], xmax + 1, i["y"] - R, i["y"] + R, z0, z1))
         else:
-            cut.append(box(i["x"] - R, i["x"] + R, i["y"], 200, z0, z1))
+            cut.append(teardrop_z(i["x"], i["y"], z0, z1, P.POCKET_D, up=(1.0, 0.0)))
+        # idler insertion: B slides in from the inboard face; A slides in from the front
+        if not breaks_out:
+            if i["approach"] == "front":
+                cut.append(box(i["x"] - R, i["x"] + R, -200, i["y"], z0, z1))
+            else:
+                cut.append(box(i["x"] - R, i["x"] + R, i["y"], 200, z0, z1))
         # incoming belt run (straight strand, tangent on the outboard side)
         ya_, yb_a = (-200, i["y"]) if i["approach"] == "front" else (i["y"], 200)
         cut.append(box(i["strand_x"] - 1.5, i["strand_x"] + 1.5, ya_, yb_a, i["z"] - 3.75, i["z"] + 3.75))
@@ -235,44 +280,37 @@ def build_joiner(P, side="left"):
         # blend pocket into that run (no knife-edge where the circle meets the slot)
         ya, yb_ = sorted([i["y"], i["depart_y"] + (1.5 if i["depart_y"] > i["y"] else -1.5)])
         cut.append(box(i["x"], i["x"] + R, ya, yb_, i["z"] - 3.75, i["z"] + 3.75))
-    # column above/below the stationary back corner pulley stays free (seat bridges over the gap)
-    gx0 = P.pass_x - 4.1                                    # pulley (centre pass_x + r, dia 18) + 1.5 mm
-    gx1 = P.pass_x + 2 * P.IDLER_PITCH_R + 4.1
-    cut.append(box(gx0, gx1, ymid, yback + 1, zu1 - (yback - ymid) - 1, zu1))
     # straight-through belt run on idler B's level (this side's other strand)
     zb = B["z"]
     cut.append(box(P.pass_x - 1.6, P.pass_x + 1.6, -200, 200, zb - 3.75, zb + 3.75))
 
     # idler bolts M3 (heads recessed so the beam sits flat on the seat)
     cut.append(zcyl(up["x"], up["y"], zu0 - 0.01, seat_top + 1, 3.3))
-    cut.append(zcyl(up["x"], up["y"], seat_top - 3.5, seat_top + 1, 6.2))   # M3x18 head recess, 3.5 mm left under it
+    cut.append(zhole(up["x"], up["y"], seat_top - 3.5, seat_top + 1, 6.2))   # M3x18 head recess, 3.5 mm left under it
     cut.append(zcyl(up["x"], up["y"], zl1 - 0.01, zu0 + 0.01, 2.8))
     cut.append(zcyl(lo["x"], lo["y"], zl1 - 0.01, zu0 + 0.01, 3.3))
     cut.append(zcyl(lo["x"], lo["y"], zl0 - 8, zl0 + 0.01, 2.8))
-    cut.append(zcyl(lo["x"], lo["y"], zu0, seat_top + 1, 6.5))       # driver / head access
+    cut.append(zhole(lo["x"], lo["y"], zu0, seat_top + 1, 6.5))       # driver / head access
     if abs(zb - up["z"]) < 1e-6 and (lo["x"] - 3.25) - (P.pass_x + 1.6) < 2.5:
         # access hole would leave a thin rib against the belt tunnel on the upper level: merge them
         cut.append(box(P.pass_x, lo["x"], lo["y"] - 3.25, lo["y"] + 3.25, zu0, zu1))
 
-    # MGN12H screws: M3, 20x20, counterbored to the seat (fit before the beam)
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            x, y = sx * P.MGN12H_C / 2, sy * P.MGN12H_B / 2
-            cut.append(zcyl(x, y, car_top - 1, base_top + 0.01, 3.4))
-            cut.append(zcyl(x, y, base_top, seat_top + 1, 6.5))
-            if sx > 0:   # inboard shafts graze the belt tunnel / pillar edge: open them cleanly (no slivers)
-                for zc_ in (lo["z"], up["z"]):
-                    cut.append(box(x, P.pass_x + 1.6, y - 3.25, y + 3.25, zc_ - hb, zc_ + hb))
+    # MGN12H screws: M3x8 along X through the plate, 20 x 20 pattern; heads sit on the inboard face of the
+    # plate with 22+ mm of free room in front of them (the gap to profile B) for a hex key
+    screws = []
+    for sy in (-1, 1):
+        for sz in (-1, 1):
+            y, z = sy * P.MGN12H_B / 2, zc + sz * P.MGN12H_C / 2
+            screws.append((y, z))
+            cut.append(xcyl(y, z, xo - 1, xo + pad + 1, 3.4))
 
     # beam cheek bolts: M5 into T-nuts in the beam's front & back slots
-    zc = P.beam_bot + 10
+    zcb = P.beam_bot + 10
     for x in (P.BEAM_END_X + 8.0, xmax - 8.0):   # both T-nuts well inside the beam end
-        cut.append(teardrop_y(x, zc, by0 - 10, yback + 10, 5.5))
-    # lightening: hollow the outboard pillar between the screw shafts
-    cut.append(box(-6.0, 6.0, -5.0, 5.0, base_top + 3, zl1 - 1.5))
+        cut.append(teardrop_y(x, zcb, by0 - 10, yback + 10, 5.5, up=(1.0, 0.0)))
 
     J = solid - union(cut)
-    return J, dict(idlers=I, roof_top=seat_top, base_top=base_top, xmax=xmax)
+    return J, dict(idlers=I, roof_top=seat_top, col0=col0, xmax=xmax, screws=screws)
 
 
 # --------------------------------------------------------------------------- carrier
@@ -393,41 +431,52 @@ def build_carrier(P, orig):
     return C, dict(belts=belts, top=top, hotend_axis=(0.0, -23.15), caps=caps, clamp_screws=screws)
 
 
-# --------------------------------------------------------------------------- frame corner joint
-def _key(p0, p1, wdir, ndir, root_w=5.6, depth=1.6):
-    """Tapered key: root rectangle on the plate face from p0 to p1 (slot centre line),
-    width root_w across `wdir`, protruding `depth` along `ndir`; all sides 45 deg."""
-    p0, p1 = np.asarray(p0, float), np.asarray(p1, float)
-    w, n = np.asarray(wdir, float), np.asarray(ndir, float)
-    u = (p1 - p0) / np.linalg.norm(p1 - p0)
-    pts = []
-    for (q0, q1, hw_, off) in ((p0, p1, root_w / 2, 0.0), (p0 + u * depth, p1 - u * depth, root_w / 2 - depth, depth)):
-        for q in (q0, q1):
-            for sgn in (-1, 1):
-                pts.append(list(q + w * sgn * hw_ + n * off))
-    # tiny back-off into the plate so the union is solid
-    pts += [list(q - n * 0.2 + w * sgn * root_w / 2) for q in (p0, p1) for sgn in (-1, 1)]
-    return m3.Manifold.hull_points(pts)
+# --------------------------------------------------------------------------- frame pair joint
+def build_pair_joint(P, T=6.0, H=36.0, WALL=5.0, G=8.0, GY=5.5):
+    """Joint carrying the two parallel profiles (A and B) of one side on ONE vertical 2020 post.
+
+    Built in PRINT orientation: the plate lies flat on the bed (its bed face is the face that touches
+    the underside of the two profiles) and the collar for the post rises from it.  Installed it is
+    turned over (see place_pair_joint): the plate sits under the profile ends and the collar hangs
+    down around the post's top.  Symmetric about x = 0 (pair centre) and y = L/2, so one part fits
+    all four ends.  Local x = 0 is the pair centre, local y = 0 is the profile end.
+
+      plate            80.5 x 42 x 6     M5 into the bottom slot of A and of B (2 each, T-nuts)
+      collar           30.4 square       M5 into the post's 4 slots (2 per side) + 1 M5 into its tapped end
+    """
+    W, L = P.PAIR_W, P.JOINT_L
+    cy = L / 2
+    ci = 20.4 / 2                       # post 20 + 0.4 clearance
+    co = ci + WALL
+    xa = P.A_XC - P.PAIR_XC             # slot centre of profile A (negative), B is +xa mirrored
+    plate = box(-W / 2, W / 2, 0, L, 0, T)
+    collar = box(-co, co, cy - co, cy + co, T - 0.01, T + H) - box(-ci, ci, cy - ci, cy + ci, T, T + H + 1)
+    gus = []
+    for sg in (-1, 1):                  # 45-degree gussets, two per collar side, clear of the bolt heads
+        for off in (-1, 1):
+            u = off * 10.5
+            gus.append(prism_y(cy + u - 2.5, cy + u + 2.5, [(sg * (co - 0.01), T - 0.01), (sg * (co + G), T - 0.01),
+                                                           (sg * (co - 0.01), T + G)]))
+            gus.append(prism_x(u - 2.5, u + 2.5, [(cy + sg * (co - 0.01), T - 0.01), (cy + sg * (co + GY), T - 0.01),
+                                                  (cy + sg * (co - 0.01), T + GY)]))
+    J = plate + collar + union(gus)
+    cut = []
+    for x in (xa, -xa):                 # 4 bolts into the bottom slots of A and B
+        for dy in (-11.0, 11.0):
+            cut.append(zcyl(x, cy + dy, -1, T + 1, 5.5))
+    cut.append(zcyl(0, cy, -1, T + 0.01, 5.5))                  # M5x16 into the post's tapped end ...
+    cut.append(zcyl(0, cy, -1, T - 2.5, 9.8))                   # ... head recessed from the profile side
+    for zz in (T + 9.0, T + 27.0):      # 8 bolts into the post's slots, teardrop holes (printed horizontal)
+        cut.append(teardrop_x(cy, zz, -co - 1, -ci + 0.2, 5.5))
+        cut.append(teardrop_x(cy, zz, ci - 0.2, co + 1, 5.5))
+        cut.append(teardrop_y(0, zz, cy - co - 1, cy - ci + 0.2, 5.5))
+        cut.append(teardrop_y(0, zz, cy + ci - 0.2, cy + co + 1, 5.5))
+    return J - union(cut)
 
 
-def build_corner_joint(P=None, T=5.0, arm=60.0, leg=40.0):
-    """3-way 2020 frame corner: vertical post, with the Y profile running over the post and the
-    X profile butting against the Y profile's side.  Local coords: post at x,y in [0,20], z<0;
-    Y profile x[0,20] z[0,20] along +y; X profile y[0,20] z[0,20] along +x.  The bracket wraps the
-    two OUTER faces (x=0 and y=0).  It is mirror-symmetric about x=y, so one part fits all corners."""
-    outline = [(-T, -leg), (20.0, -leg), (arm, 0.0), (arm, 20.0), (-T, 20.0)]
-    front = m3.Manifold.hull_points([[u, y, v] for (u, v) in outline for y in (-T, 0.0)])   # plate on y=0 face
-    side = m3.Manifold.hull_points([[x, u, v] for (u, v) in outline for x in (-T, 0.0)])    # plate on x=0 face
-    J = front + side
-    keys = [
-        _key((20.6, 0.0, 10.0), (arm - 1.0, 0.0, 10.0), (0, 0, 1), (0, 1, 0)),     # X-profile slot (front plate)
-        _key((10.0, 0.0, -leg + 1.0), (10.0, 0.0, -0.6), (1, 0, 0), (0, 1, 0)),    # post slot (front plate)
-        _key((0.0, 20.6, 10.0), (0.0, arm - 1.0, 10.0), (0, 0, 1), (1, 0, 0)),     # Y-profile slot (side plate)
-        _key((0.0, 10.0, -leg + 1.0), (0.0, 10.0, -0.6), (0, 1, 0), (1, 0, 0)),    # post slot (side plate)
-    ]
-    J = J + union(keys)
-    holes = []
-    for (a, z) in ((10.0, 10.0), (30.0, 10.0), (50.0, 10.0), (10.0, -10.0), (10.0, -30.0)):
-        holes.append(ycyl(a, z, -T - 1, 2.0, 5.5))                                  # front plate: vertical when printed
-        holes.append(teardrop_x(a, z, -T - 1, 2.0, 5.5, up=(0, 1, 0)))              # side plate: point up when printed
-    return J - union(holes)
+def place_pair_joint(P, J, right=False, back=False):
+    """Pair joint (print orientation) -> installed position at one of the four post positions."""
+    M = J.rotate([180, 0, 0])                                   # plate on top of the collar; y runs 0 .. -L
+    x = P.Y_RAIL_SPACING - P.PAIR_XC if right else P.PAIR_XC
+    y = P.FRAME_Y_INNER + 20.0 if back else -20.0 + P.JOINT_L
+    return M.translate([x, y, -20.0])
